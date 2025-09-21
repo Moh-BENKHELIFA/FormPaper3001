@@ -1,0 +1,80 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigation } from '../hooks/useNavigation';
+import { useToast } from '../contexts/ToastContext';
+import { paperService } from '../services/paperService';
+import { Paper, PaperStats } from '../types/Paper';
+import TopMenu from './TopMenu';
+import Sidebar from './Sidebar';
+import MainContent from './MainContent';
+
+const HomePage: React.FC = () => {
+  const { isLoading, setIsLoading } = useNavigation();
+  const { error } = useToast();
+  const [papers, setPapers] = useState<Paper[]>([]);
+  const [stats, setStats] = useState<PaperStats>({
+    total: 0,
+    unread: 0,
+    reading: 0,
+    read: 0,
+    favorite: 0,
+  });
+  const [filteredPapers, setFilteredPapers] = useState<Paper[]>([]);
+
+  useEffect(() => {
+    loadPapers();
+    loadStats();
+  }, []);
+
+  const loadPapers = async () => {
+    try {
+      setIsLoading(true);
+      const papersData = await paperService.getAllPapers();
+      setPapers(papersData);
+      setFilteredPapers(papersData);
+    } catch (err) {
+      error('Erreur', 'Impossible de charger les articles');
+      console.error('Error loading papers:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const statsData = await paperService.getPaperStats();
+      setStats(statsData);
+    } catch (err) {
+      console.error('Error loading stats:', err);
+    }
+  };
+
+  const handlePapersChange = () => {
+    loadPapers();
+    loadStats();
+  };
+
+  const handleFilterChange = (filtered: Paper[]) => {
+    setFilteredPapers(filtered);
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar stats={stats} onStatsRefresh={loadStats} />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <TopMenu
+          papers={papers}
+          onFilterChange={handleFilterChange}
+        />
+
+        <MainContent
+          papers={filteredPapers}
+          isLoading={isLoading}
+          onPapersChange={handlePapersChange}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default HomePage;

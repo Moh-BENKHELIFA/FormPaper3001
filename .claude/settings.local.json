@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(npm run init-db:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm start)",
+      "Bash(curl:*)",
+      "Bash(dir)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(PORT=8778 node server.js)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c:*)",
+      "Bash(node:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(tasklist:*)",
+      "Bash(del formpaper.db)",
+      "Bash(del C:UsersmbenkhelDevWebFormPaper3001temp_image_upload_component.tsx)",
+      "Bash(dir:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

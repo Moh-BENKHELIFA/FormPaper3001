@@ -1,0 +1,313 @@
+# FormPaper3001 📚
+
+## Vue d'ensemble du projet
+
+FormPaper3000 est un système complet de gestion d'articles scientifiques développé avec une architecture moderne React + Node.js. Le projet permet aux chercheurs et étudiants d'organiser, annoter et gérer leur collection d'articles académiques avec des fonctionnalités avancées d'extraction automatique de métadonnées et de prise de notes.
+
+## 🏗️ Architecture technique
+
+### Frontend
+- **React 19** avec TypeScript pour une interface utilisateur moderne
+- **Vite** comme bundler pour des performances optimales
+- **TailwindCSS** pour un design responsive et cohérent
+- **Architecture basée sur les composants** avec hooks personnalisés
+
+### Backend
+- **Node.js + Express** pour l'API REST
+- **SQLite** comme base de données légère et performante
+- **Multer** pour la gestion des uploads de fichiers
+- **Scripts Python** pour l'extraction de données PDF
+
+### Base de données
+- **SQLite** avec 4 tables principales :
+  - `Papers` : informations des articles
+  - `Categories` : système de classification
+  - `PaperCategories` : relations many-to-many
+  - `Descriptions` : notes et annotations
+
+## 📁 Structure du projet
+
+```
+FormPaper3000/
+├── frontend/                    # Application React TypeScript
+│   ├── src/
+│   │   ├── components/         # Composants React réutilisables
+│   │   │   ├── AddPaper.tsx           # Modal d'ajout d'articles
+│   │   │   ├── AddPaperByPDF.tsx      # Import direct par PDF
+│   │   │   ├── ImageSelectionModal.tsx # Sélection d'images
+│   │   │   ├── PaperCard.tsx          # Carte d'article
+│   │   │   ├── PaperList.tsx          # Liste des articles
+│   │   │   ├── PaperNotesV2.tsx       # Système de notes avancé
+│   │   │   └── blocks/                # Système de blocs Notion-like
+│   │   │       ├── TextBlock.tsx
+│   │   │       ├── HeadingBlock.tsx
+│   │   │       ├── ListBlock.tsx
+│   │   │       └── ImageBlock.tsx
+│   │   ├── services/           # Couche de services
+│   │   │   └── paperService.ts        # API client pour les papers
+│   │   ├── types/              # Définitions TypeScript
+│   │   │   ├── Paper.ts               # Types pour les articles
+│   │   │   └── BlockTypes.ts          # Types pour le système de blocs
+│   │   ├── contexts/           # Contextes React
+│   │   │   └── ToastContext.tsx       # Système de notifications
+│   │   └── pages/              # Pages principales
+│   │       ├── Home.tsx               # Page d'accueil avec liste
+│   │       └── PaperDetail.tsx        # Page détail d'un article
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── backend/                     # Serveur Node.js Express
+│   ├── src/
+│   │   ├── database/           # Couche base de données
+│   │   │   ├── database.js            # Connexion SQLite
+│   │   │   ├── models.js              # Modèles de données
+│   │   │   ├── operations.js          # Opérations CRUD
+│   │   │   ├── fileOperations.js      # Gestion des fichiers
+│   │   │   └── init-db.js             # Initialisation DB
+│   │   ├── routes/             # Routes Express
+│   │   │   └── papers.js              # API endpoints pour papers
+│   │   └── utils/              # Utilitaires
+│   │       └── extractPDFData.py      # Script d'extraction PDF
+│   ├── server.js               # Point d'entrée du serveur
+│   └── package.json
+│
+├── MyPapers/                   # Stockage automatique des fichiers
+│   └── paper_{id}/            # Dossier par article
+│       ├── document.pdf       # PDF original
+│       └── images/            # Images extraites
+│
+├── TODO.txt                    # Roadmap du projet
+└── README.md                   # Cette documentation
+```
+
+## 🚀 Fonctionnalités principales
+
+### ✅ Implémentées
+1. **Gestion complète des articles**
+   - Ajout par DOI avec extraction automatique des métadonnées
+   - Import direct par PDF avec extraction d'images
+   - Stockage automatique des fichiers dans des dossiers uniques
+   - Statuts de lecture : non lu, en cours, lu, favoris
+
+2. **Système de catégories**
+   - Création et gestion de catégories personnalisées
+   - Association multiple d'articles aux catégories
+   - Filtrage par catégories
+
+3. **Interface utilisateur moderne**
+   - Design responsive avec TailwindCSS
+   - Cartes d'articles avec aperçu
+   - Modal d'ajout avec onglets (DOI/PDF)
+   - Sélection d'images de couverture pour les PDFs
+
+4. **Prise de notes avancée**
+   - Système de blocs inspiré de Notion
+   - Types de blocs : texte, titres (H1-H3), listes, images
+   - Sauvegarde automatique en JSON
+   - Commandes slash pour créer des blocs
+
+### 🔄 En cours de développement
+5. **Navigation et détails**
+   - Page de détail d'article avec double-clic
+   - Modification des statuts de lecture
+   - Suppression d'articles avec confirmation
+
+### 📋 Roadmap
+6. **Fonctionnalités avancées**
+   - Tri personnalisable de la liste
+   - Vues multiples (tableau, ligne, vignettes)
+   - Intégration LLM pour résumés automatiques
+   - Chatbot pour questions sur les articles
+   - Mode sombre
+
+## 🛠️ API Endpoints
+
+### Papers
+- `GET /papers` - Liste tous les articles
+- `POST /papers` - Créer un nouvel article
+- `GET /papers/:id` - Détails d'un article
+- `PUT /papers/:id` - Mettre à jour un article
+- `DELETE /papers/:id` - Supprimer un article
+- `GET /papers/metadata-from-doi/:doi` - Extraire métadonnées par DOI
+- `POST /papers/extract-from-pdf` - Extraire données d'un PDF
+
+### Categories
+- `GET /categories` - Liste toutes les catégories
+- `POST /categories` - Créer une nouvelle catégorie
+- `DELETE /categories/:id` - Supprimer une catégorie
+
+## 📊 Schéma de base de données
+
+```sql
+-- Table principale des articles
+CREATE TABLE Papers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  authors TEXT NOT NULL,
+  publication_date DATE NOT NULL,
+  conference TEXT,
+  reading_status TEXT DEFAULT 'non_lu',
+  image TEXT,
+  doi TEXT NOT NULL UNIQUE,
+  url TEXT NOT NULL,
+  folder_path TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table des catégories
+CREATE TABLE Categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE
+);
+
+-- Table de liaison papers-catégories
+CREATE TABLE PaperCategories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  paper_id INTEGER,
+  categorie_id INTEGER,
+  FOREIGN KEY (paper_id) REFERENCES Papers(id) ON DELETE CASCADE,
+  FOREIGN KEY (categorie_id) REFERENCES Categories(id) ON DELETE CASCADE
+);
+
+-- Table des descriptions et notes
+CREATE TABLE Descriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  paper_id INTEGER UNIQUE,
+  texte TEXT,
+  images TEXT,
+  FOREIGN KEY (paper_id) REFERENCES Papers(id) ON DELETE CASCADE
+);
+```
+
+## 🔧 Installation et démarrage
+
+### Prérequis
+- Node.js 14+
+- npm ou yarn
+- Python 3.x (pour l'extraction PDF)
+
+### Installation
+```bash
+# Cloner le repository
+git clone [url-du-repo]
+cd FormPaper3000
+
+# Installer les dépendances backend
+cd backend
+npm install
+
+# Initialiser la base de données
+npm run init-db
+
+# Installer les dépendances frontend
+cd ../frontend
+npm install
+```
+
+### Démarrage
+```bash
+# Terminal 1 - Backend
+cd backend
+npm run dev    # ou npm start
+
+# Terminal 2 - Frontend
+cd frontend
+npm run dev
+```
+
+L'application sera accessible sur `http://localhost:5173`
+
+## 🏗️ Composants clés
+
+### AddPaper.tsx
+Modal principale d'ajout d'articles avec deux modes :
+- **Onglet DOI** : Extraction automatique par DOI
+- **Onglet PDF** : Import direct avec sélection d'images
+
+### AddPaperByPDF.tsx
+Composant spécialisé pour l'import PDF :
+- Extraction automatique des métadonnées
+- Sélection des images à conserver
+- Choix de l'image de couverture
+- Interface full-screen intégrée
+
+### PaperNotesV2.tsx
+Système de prise de notes avancé :
+- Blocs de contenu modulaires
+- Commandes slash pour création rapide
+- Sauvegarde automatique
+- Interface inspirée de Notion
+
+### paperService.ts
+Couche de service pour l'API :
+- Gestion des requêtes HTTP
+- Retry automatique en cas d'erreur
+- Types TypeScript stricts
+- Gestion des uploads de fichiers
+
+## 🎯 Patterns techniques
+
+### State Management
+- **React hooks** (useState, useEffect, useContext)
+- **Custom hooks** pour la logique métier
+- **Context API** pour les notifications globales
+
+### Type Safety
+- **TypeScript strict** sur tout le codebase
+- **Interfaces complètes** pour tous les types de données
+- **Validation runtime** avec patterns personnalisés
+
+### File Organization
+- **Separation of concerns** claire
+- **Service layer pattern** pour l'API
+- **Component composition** pour la réutilisabilité
+
+### Error Handling
+- **Try-catch systématique** avec logging
+- **Toast notifications** pour le feedback utilisateur
+- **Fallbacks UI** pour les états d'erreur
+
+## 🔍 Fonctionnalités techniques avancées
+
+### Extraction automatique de données
+- **DOI Resolution** via APIs externes
+- **PDF Parsing** avec scripts Python
+- **Image extraction** automatique des PDFs
+- **Metadata validation** avec regex patterns
+
+### Système de fichiers
+- **Création automatique** de dossiers par article
+- **Organisation hiérarchique** des fichiers
+- **Cleanup automatique** lors des suppressions
+- **Path management** cross-platform
+
+### Interface utilisateur
+- **Responsive design** mobile-first
+- **Accessibility** avec ARIA labels
+- **Loading states** et feedback visuel
+- **Keyboard navigation** complète
+
+## 🧪 Développement et tests
+
+### Scripts disponibles
+```bash
+# Backend
+npm run dev      # Développement avec nodemon
+npm start        # Production
+npm run init-db  # Initialisation DB
+
+# Frontend
+npm run dev      # Serveur de développement
+npm run build    # Build de production
+npm run preview  # Aperçu du build
+```
+
+### Prochaines fonctionnalités prioritaires
+2. **Système de tri** avancé dans la liste de papiers
+3. **Vues multiples** (tableau, cartes, liste)
+4. **Intégration LLM** pour résumés automatiques et Q&A 
+5. **Mode sombre** complet
+
+
+
+**FormPaper3001** - Un gestionnaire moderne d'articles scientifiques pour la recherche académique.
