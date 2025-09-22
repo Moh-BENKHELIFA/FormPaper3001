@@ -18,6 +18,10 @@ async function getPaper(id) {
   return await PaperOperations.getPaper(id);
 }
 
+async function checkDoiExists(doi) {
+  return await PaperOperations.checkDoiExists(doi);
+}
+
 async function createPaper(paperData) {
   return await PaperOperations.createPaper(paperData);
 }
@@ -100,6 +104,7 @@ module.exports = {
   db,
   getAllPapers,
   getPaper,
+  checkDoiExists,
   createPaper,
   updatePaper,
   deletePaper,

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Upload, Link, Loader2, Plus, X } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
+import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
 import { DOIMetadata, Tag } from '../types/Paper';
 
 const AddPaper: React.FC = () => {
   const { goToHome } = useNavigation();
+  const { success: showSuccess, error: showError } = useToast();
   const [activeTab, setActiveTab] = useState<'doi' | 'pdf'>('doi');
   const [doi, setDoi] = useState('');
   const [metadata, setMetadata] = useState<DOIMetadata | null>(null);
@@ -50,7 +52,8 @@ const AddPaper: React.FC = () => {
       setSelectedTags([...selectedTags, newTag]);
       setNewTagName('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la création du tag');
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la création du tag';
+      showError(errorMessage);
     } finally {
       setIsCreatingTag(false);
     }
@@ -210,7 +213,8 @@ const AddPaper: React.FC = () => {
       }
     } catch (err) {
       console.error('PDF upload error:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors du téléchargement du PDF');
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors du téléchargement du PDF';
+      showError(errorMessage);
     } finally {
       setIsUploadingPDF(false);
     }
@@ -282,7 +286,8 @@ const AddPaper: React.FC = () => {
       // Rediriger vers l'accueil ou afficher un message de succès
       goToHome();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de l\'ajout de l\'article');
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de l\'ajout de l\'article';
+      showError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -290,7 +295,7 @@ const AddPaper: React.FC = () => {
 
   const handleFetchMetadata = async () => {
     if (!doi.trim()) {
-      setError('Veuillez saisir un DOI');
+      showError('Veuillez saisir un DOI');
       return;
     }
 
@@ -298,10 +303,20 @@ const AddPaper: React.FC = () => {
     setError(null);
 
     try {
+      // Vérifier d'abord si le DOI existe déjà dans la base de données
+      const exists = await paperService.checkDoiExists(doi.trim());
+      if (exists) {
+        showError(`Un article avec le DOI "${doi.trim()}" existe déjà dans votre bibliothèque.`);
+        setIsLoading(false);
+        return;
+      }
+
+      // Si le DOI n'existe pas, récupérer les métadonnées
       const result = await paperService.fetchDOIMetadata(doi.trim());
       setMetadata(result);
+      showSuccess('Métadonnées récupérées avec succès');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la récupération des métadonnées');
+      showError(err instanceof Error ? err.message : 'Erreur lors de la récupération des métadonnées');
     } finally {
       setIsLoading(false);
     }

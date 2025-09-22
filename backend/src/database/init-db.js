@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS papers (
   conference_short TEXT,
   reading_status TEXT DEFAULT 'unread' CHECK (reading_status IN ('unread', 'reading', 'read', 'favorite')),
   image TEXT,
-  doi TEXT,
+  doi TEXT UNIQUE,
   url TEXT,
   folder_path TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

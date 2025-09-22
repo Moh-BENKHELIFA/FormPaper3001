@@ -110,6 +110,17 @@ app.get('/api/papers/doi/:doi', async (req, res) => {
   }
 });
 
+app.get('/api/papers/check-doi/:doi', async (req, res) => {
+  try {
+    const doi = decodeURIComponent(req.params.doi);
+    const exists = await database.checkDoiExists(doi);
+    res.json({ success: true, data: { exists, doi } });
+  } catch (error) {
+    console.error('Error checking DOI existence:', error);
+    res.status(500).json({ success: false, error: 'Failed to check DOI existence' });
+  }
+});
+
 app.get('/api/papers/search', async (req, res) => {
   try {
     const { q } = req.query;
@@ -143,6 +154,15 @@ app.post('/api/papers', async (req, res) => {
     res.status(201).json({ success: true, data: paper });
   } catch (error) {
     console.error('Error creating paper:', error);
+
+    // Détecter si c'est une erreur de DOI en doublon
+    console.log('Error message:', error.message);
+    console.log('Checking DOI conflict:', error.message && error.message.includes('existe déjà dans la base de données'));
+    if (error.message && error.message.includes('existe déjà dans la base de données')) {
+      console.log('Returning 409 status for DOI conflict');
+      return res.status(409).json({ success: false, error: error.message });
+    }
+
     res.status(500).json({ success: false, error: 'Failed to create paper' });
   }
 });

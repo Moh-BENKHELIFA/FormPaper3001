@@ -23,11 +23,26 @@ export const paperService = {
   },
 
   async createPaper(paperData: PaperFormData): Promise<Paper> {
-    const response = await api.post<APIResponse<Paper>>('/papers', paperData);
-    if (!response.data.data) {
-      throw new Error(response.data.error || 'Failed to create paper');
+    try {
+      const response = await api.post<APIResponse<Paper>>('/papers', paperData);
+      if (!response.data.data) {
+        throw new Error(response.data.error || 'Impossible de créer l\'article - DOI peut-être déjà existant');
+      }
+      return response.data.data;
+    } catch (error) {
+      if (error.response) {
+        // Erreur HTTP avec réponse du serveur
+        if (error.response.status === 409) {
+          // Conflit DOI
+          throw new Error(error.response.data.error || 'Un article avec ce DOI existe déjà dans la base de données');
+        } else if (error.response.data?.error) {
+          // Autre erreur avec message du serveur
+          throw new Error(error.response.data.error);
+        }
+      }
+      // Erreur réseau ou autre
+      throw new Error(error instanceof Error ? error.message : 'Erreur lors de la création de l\'article');
     }
-    return response.data.data;
   },
 
   async updatePaper(id: number, paperData: Partial<PaperFormData>): Promise<Paper> {
@@ -67,6 +82,16 @@ export const paperService = {
       throw new Error(response.data.error || 'Failed to fetch DOI metadata');
     }
     return response.data.data;
+  },
+
+  async checkDoiExists(doi: string): Promise<boolean> {
+    try {
+      const response = await api.get<APIResponse<{ exists: boolean; doi: string }>>(`/papers/check-doi/${encodeURIComponent(doi)}`);
+      return response.data.data?.exists || false;
+    } catch (error) {
+      console.error('Error checking DOI existence:', error);
+      return false;
+    }
   },
 
   async uploadPDF(file: File): Promise<{ filePath: string; metadata: DOIMetadata | null; images: ExtractedImages }> {

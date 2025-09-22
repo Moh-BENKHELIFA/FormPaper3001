@@ -103,10 +103,25 @@ class PaperOperations {
     return paper.toJSON();
   }
 
+  static async checkDoiExists(doi) {
+    if (!doi || doi.trim() === '') {
+      return false;
+    }
+
+    const sql = 'SELECT id FROM papers WHERE doi = ? LIMIT 1';
+    const result = await db.get(sql, [doi.trim()]);
+    return !!result;
+  }
+
   static async createPaper(paperData) {
     const validation = Paper.validate(paperData);
     if (!validation.isValid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
+    }
+
+    // Vérifier si le DOI existe déjà
+    if (paperData.doi && await this.checkDoiExists(paperData.doi)) {
+      throw new Error(`Un article avec le DOI "${paperData.doi}" existe déjà dans la base de données`);
     }
 
     // D'abord insérer l'article pour obtenir l'ID
