@@ -53,6 +53,14 @@ export const paperService = {
     return response.data.data;
   },
 
+  async updateFavoriteStatus(id: number, isFavorite: boolean): Promise<Paper> {
+    const response = await api.patch<APIResponse<Paper>>(`/papers/${id}/favorite`, { is_favorite: isFavorite ? 1 : 0 });
+    if (!response.data.data) {
+      throw new Error(response.data.error || 'Failed to update favorite status');
+    }
+    return response.data.data;
+  },
+
   async fetchDOIMetadata(doi: string): Promise<DOIMetadata> {
     const response = await api.get<APIResponse<DOIMetadata>>(`/papers/doi/${encodeURIComponent(doi)}`);
     if (!response.data.data) {
@@ -223,5 +231,22 @@ export const paperService = {
       throw new Error(response.data.error || 'Failed to upload cover image');
     }
     return response.data.data.imagePath;
+  },
+
+  async savePdfAssets(paperId: number, data: {
+    pdfPath: string;
+    selectedImages: string[];
+    coverImagePath?: string;
+  }): Promise<{ pdfPath: string; savedImages: any[]; coverImage?: string }> {
+    const response = await api.post<APIResponse<{
+      pdfPath: string;
+      savedImages: any[];
+      coverImage?: string;
+    }>>(`/papers/${paperId}/save-pdf-assets`, data);
+
+    if (!response.data.data) {
+      throw new Error(response.data.error || 'Failed to save PDF assets');
+    }
+    return response.data.data;
   },
 };

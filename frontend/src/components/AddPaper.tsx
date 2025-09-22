@@ -21,6 +21,11 @@ const AddPaper: React.FC = () => {
   const [pdfMetadata, setPdfMetadata] = useState<any>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
+  const [readingStatus, setReadingStatus] = useState<'unread' | 'reading' | 'read'>('unread');
+  const [isFavorite, setIsFavorite] = useState<boolean>(false);
+  const [extractedImages, setExtractedImages] = useState<string[]>([]);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedCoverFromExtracted, setSelectedCoverFromExtracted] = useState<string | null>(null);
 
   useEffect(() => {
     loadTags();
@@ -183,6 +188,26 @@ const AddPaper: React.FC = () => {
         setMetadata(testMetadata);
         setError('Métadonnées de test créées. Le script d\'extraction DOI doit être vérifié.');
       }
+
+      // Gérer les images extraites
+      console.log('=== DEBUG IMAGES ===');
+      console.log('Result complet:', result);
+      console.log('result.images:', result.images);
+      console.log('Type de result.images:', typeof result.images);
+      console.log('result.images.images:', result.images?.images);
+      console.log('Type de result.images.images:', typeof result.images?.images);
+      console.log('Array.isArray(result.images.images):', Array.isArray(result.images?.images));
+
+      if (result.images && result.images.images && Array.isArray(result.images.images)) {
+        console.log('✅ Images extraites trouvées:', result.images.images);
+        setExtractedImages(result.images.images);
+        // Sélectionner toutes les images par défaut
+        setSelectedImages(result.images.images);
+      } else {
+        console.log('❌ Aucune image extraite trouvée', result.images);
+        setExtractedImages([]);
+        setSelectedImages([]);
+      }
     } catch (err) {
       console.error('PDF upload error:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors du téléchargement du PDF');
@@ -210,6 +235,10 @@ const AddPaper: React.FC = () => {
         publication_date: publicationDate,
         conference: metadata.journal,
         conference_short: metadata.journal_short || '',
+        reading_status: readingStatus,
+        is_favorite: isFavorite ? 1 : 0,
+        year: metadata.year,
+        month: metadata.month,
         doi: metadata.doi,
         url: metadata.url || '',
         categories: [], // TODO: ajouter gestion des catégories si nécessaire
@@ -219,8 +248,24 @@ const AddPaper: React.FC = () => {
       // Créer l'article
       const newPaper = await paperService.createPaper(paperData);
 
-      // Uploader l'image de couverture si sélectionnée
-      if (coverImage) {
+      // Si nous avons un PDF à sauvegarder avec des images extraites
+      if (pdfMetadata?.filePath && (selectedImages.length > 0 || selectedCoverFromExtracted)) {
+        try {
+          const savePdfData = {
+            pdfPath: pdfMetadata.filePath,
+            selectedImages: selectedImages,
+            coverImagePath: selectedCoverFromExtracted || undefined
+          };
+          await paperService.savePdfAssets(newPaper.id, savePdfData);
+          console.log('PDF et images sauvegardés avec succès');
+        } catch (pdfError) {
+          console.error('Erreur lors de la sauvegarde du PDF et des images:', pdfError);
+          // Continue même si la sauvegarde échoue
+        }
+      }
+
+      // Uploader l'image de couverture si sélectionnée manuellement (et pas d'image extraite sélectionnée)
+      if (coverImage && !selectedCoverFromExtracted) {
         try {
           await paperService.uploadCoverImage(newPaper.id, coverImage);
         } catch (imageError) {
@@ -492,26 +537,51 @@ const AddPaper: React.FC = () => {
                     <div className="mt-6 pt-4 border-t border-green-200">
                       <h5 className="text-md font-medium text-green-800 mb-3">Image de couverture (optionnel)</h5>
 
-                      {coverImagePreview ? (
+                      {(coverImagePreview || selectedCoverFromExtracted) ? (
                         <div className="flex items-start space-x-4">
-                          <div className="w-32 h-40 bg-gray-100 rounded-lg overflow-hidden border">
+                          <div className="w-32 h-40 bg-gray-100 rounded-lg overflow-hidden border shadow-sm">
                             <img
-                              src={coverImagePreview}
+                              src={selectedCoverFromExtracted ? `/${selectedCoverFromExtracted}` : coverImagePreview}
                               alt="Aperçu de la couverture"
                               className="w-full h-full object-cover"
                             />
                           </div>
                           <div className="flex-1">
                             <p className="text-sm text-gray-700 mb-2">
-                              Image sélectionnée: <span className="font-medium">{coverImage?.name}</span>
+                              {selectedCoverFromExtracted ? (
+                                <span>Image de couverture: <span className="font-medium text-green-700">Extraite du PDF</span></span>
+                              ) : (
+                                <span>Image sélectionnée: <span className="font-medium">{coverImage?.name}</span></span>
+                              )}
                             </p>
-                            <button
-                              onClick={handleRemoveImage}
-                              className="text-sm text-red-600 hover:text-red-800 flex items-center space-x-1"
-                            >
-                              <X className="w-4 h-4" />
-                              <span>Supprimer l'image</span>
-                            </button>
+                            <div className="space-y-2">
+                              <button
+                                onClick={() => {
+                                  if (selectedCoverFromExtracted) {
+                                    setSelectedCoverFromExtracted(null);
+                                  } else {
+                                    handleRemoveImage();
+                                  }
+                                  setCoverImagePreview(null);
+                                }}
+                                className="text-sm text-red-600 hover:text-red-800 flex items-center space-x-1"
+                              >
+                                <X className="w-4 h-4" />
+                                <span>Annuler cette image</span>
+                              </button>
+                              <label className="text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1 cursor-pointer">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleImageInputChange}
+                                  className="hidden"
+                                />
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>Importer une autre image</span>
+                              </label>
+                            </div>
                           </div>
                         </div>
                       ) : (
@@ -539,6 +609,66 @@ const AddPaper: React.FC = () => {
                         onChange={handleImageInputChange}
                         className="hidden"
                       />
+                    </div>
+
+                    {/* Section Statut et Favoris */}
+                    <div className="mt-6 space-y-4">
+                      {/* Statut de lecture */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          Statut de lecture
+                        </label>
+                        <div className="flex space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => setReadingStatus('unread')}
+                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md border transition-colors ${
+                              readingStatus === 'unread'
+                                ? 'bg-gray-500 text-white border-gray-500'
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            Non lu
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReadingStatus('reading')}
+                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md border transition-colors ${
+                              readingStatus === 'reading'
+                                ? 'bg-yellow-500 text-white border-yellow-500'
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            En cours
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReadingStatus('read')}
+                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md border transition-colors ${
+                              readingStatus === 'read'
+                                ? 'bg-green-500 text-white border-green-500'
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            Lu
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Favori */}
+                      <div>
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isFavorite}
+                            onChange={(e) => setIsFavorite(e.target.checked)}
+                            className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
+                          />
+                          <span className="text-sm font-medium text-gray-700">
+                            Marquer comme favori
+                          </span>
+                        </label>
+                      </div>
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-green-200">
@@ -771,30 +901,183 @@ const AddPaper: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Section Images extraites du PDF */}
+                    {extractedImages.length > 0 && (
+                      <div className="mt-6 pt-4 border-t border-green-200">
+                        <h5 className="text-md font-medium text-green-800 mb-3">
+                          Images extraites du PDF ({extractedImages.length})
+                        </h5>
+                        <p className="text-sm text-gray-600 mb-4">
+                          Sélectionnez les images que vous souhaitez sauvegarder et choisissez une image de couverture.
+                        </p>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                          {extractedImages.map((imagePath, index) => (
+                            <div key={index} className="relative group">
+                              <div
+                                className="aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 transition-all duration-200 cursor-pointer transform hover:scale-105 hover:shadow-lg"
+                                style={{
+                                  borderColor: selectedImages.includes(imagePath) ? '#3B82F6' : '#E5E7EB',
+                                  boxShadow: selectedImages.includes(imagePath) ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none'
+                                }}
+                                onClick={() => {
+                                  if (selectedImages.includes(imagePath)) {
+                                    // Déselectionner l'image
+                                    setSelectedImages(selectedImages.filter(img => img !== imagePath));
+                                    // Si c'était la couverture sélectionnée, la déselectionner et mettre à jour l'aperçu
+                                    if (selectedCoverFromExtracted === imagePath) {
+                                      setSelectedCoverFromExtracted(null);
+                                      setCoverImagePreview(null);
+                                    }
+                                  } else {
+                                    // Sélectionner l'image
+                                    setSelectedImages([...selectedImages, imagePath]);
+                                  }
+                                }}
+                              >
+                                <img
+                                  src={`/${imagePath}`}
+                                  alt={`Image extraite ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+
+                                {/* Overlay avec effet de sélection */}
+                                <div className={`absolute inset-0 transition-all duration-200 ${
+                                  selectedImages.includes(imagePath)
+                                    ? 'bg-blue-500 bg-opacity-20'
+                                    : 'bg-black bg-opacity-0 hover:bg-opacity-10'
+                                }`}>
+                                  {/* Bouton pour définir comme couverture - visible seulement si l'image est sélectionnée */}
+                                  {selectedImages.includes(imagePath) && (
+                                    <div className="absolute bottom-2 left-2 right-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedCoverFromExtracted(imagePath);
+                                          setCoverImagePreview(`/${imagePath}`);
+                                          setCoverImage(null);
+                                        }}
+                                        className={`w-full px-2 py-1 text-xs rounded-md font-medium transition-colors ${
+                                          selectedCoverFromExtracted === imagePath
+                                            ? 'bg-green-600 text-white'
+                                            : 'bg-white text-gray-800 hover:bg-gray-100 shadow-sm'
+                                        }`}
+                                      >
+                                        {selectedCoverFromExtracted === imagePath ? '⭐ Couverture' : 'Définir comme couverture'}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Indicateurs visuels améliorés */}
+                              <div className="absolute top-2 left-2 space-y-1">
+                                {selectedImages.includes(imagePath) && (
+                                  <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </div>
+                                )}
+                                {selectedCoverFromExtracted === imagePath && (
+                                  <div className="w-7 h-7 bg-green-600 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+
+                              <p className="text-xs text-gray-500 mt-2 text-center font-medium">
+                                Image {index + 1}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Actions globales */}
+                        <div className="mt-4 flex gap-2">
+                          <button
+                            onClick={() => setSelectedImages(extractedImages)}
+                            className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200 transition-colors"
+                          >
+                            Tout sélectionner
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedImages([]);
+                              setSelectedCoverFromExtracted(null);
+                            }}
+                            className="px-3 py-1 text-sm bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 transition-colors"
+                          >
+                            Tout désélectionner
+                          </button>
+                        </div>
+
+                        {selectedImages.length > 0 && (
+                          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                            <p className="text-sm text-blue-800">
+                              {selectedImages.length} image{selectedImages.length > 1 ? 's' : ''} sélectionnée{selectedImages.length > 1 ? 's' : ''} pour sauvegarde
+                              {selectedCoverFromExtracted && (
+                                <span className="ml-2 text-green-700">
+                                  • Image {extractedImages.indexOf(selectedCoverFromExtracted) + 1} définie comme couverture
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Section Image de couverture */}
                     <div className="mt-6 pt-4 border-t border-green-200">
                       <h5 className="text-md font-medium text-green-800 mb-3">Image de couverture (optionnel)</h5>
 
-                      {coverImagePreview ? (
+                      {(coverImagePreview || selectedCoverFromExtracted) ? (
                         <div className="flex items-start space-x-4">
-                          <div className="w-32 h-40 bg-gray-100 rounded-lg overflow-hidden border">
+                          <div className="w-32 h-40 bg-gray-100 rounded-lg overflow-hidden border shadow-sm">
                             <img
-                              src={coverImagePreview}
+                              src={selectedCoverFromExtracted ? `/${selectedCoverFromExtracted}` : coverImagePreview}
                               alt="Aperçu de la couverture"
                               className="w-full h-full object-cover"
                             />
                           </div>
                           <div className="flex-1">
                             <p className="text-sm text-gray-700 mb-2">
-                              Image sélectionnée: <span className="font-medium">{coverImage?.name}</span>
+                              {selectedCoverFromExtracted ? (
+                                <span>Image de couverture: <span className="font-medium text-green-700">Extraite du PDF</span></span>
+                              ) : (
+                                <span>Image sélectionnée: <span className="font-medium">{coverImage?.name}</span></span>
+                              )}
                             </p>
-                            <button
-                              onClick={handleRemoveImage}
-                              className="text-sm text-red-600 hover:text-red-800 flex items-center space-x-1"
-                            >
-                              <X className="w-4 h-4" />
-                              <span>Supprimer l'image</span>
-                            </button>
+                            <div className="space-y-2">
+                              <button
+                                onClick={() => {
+                                  if (selectedCoverFromExtracted) {
+                                    setSelectedCoverFromExtracted(null);
+                                  } else {
+                                    handleRemoveImage();
+                                  }
+                                  setCoverImagePreview(null);
+                                }}
+                                className="text-sm text-red-600 hover:text-red-800 flex items-center space-x-1"
+                              >
+                                <X className="w-4 h-4" />
+                                <span>Annuler cette image</span>
+                              </button>
+                              <label className="text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1 cursor-pointer">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleImageInputChange}
+                                  className="hidden"
+                                />
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>Importer une autre image</span>
+                              </label>
+                            </div>
                           </div>
                         </div>
                       ) : (
@@ -822,6 +1105,66 @@ const AddPaper: React.FC = () => {
                         onChange={handleImageInputChange}
                         className="hidden"
                       />
+                    </div>
+
+                    {/* Section Statut et Favoris */}
+                    <div className="mt-6 space-y-4">
+                      {/* Statut de lecture */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          Statut de lecture
+                        </label>
+                        <div className="flex space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => setReadingStatus('unread')}
+                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md border transition-colors ${
+                              readingStatus === 'unread'
+                                ? 'bg-gray-500 text-white border-gray-500'
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            Non lu
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReadingStatus('reading')}
+                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md border transition-colors ${
+                              readingStatus === 'reading'
+                                ? 'bg-yellow-500 text-white border-yellow-500'
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            En cours
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReadingStatus('read')}
+                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md border transition-colors ${
+                              readingStatus === 'read'
+                                ? 'bg-green-500 text-white border-green-500'
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            Lu
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Favori */}
+                      <div>
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isFavorite}
+                            onChange={(e) => setIsFavorite(e.target.checked)}
+                            className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
+                          />
+                          <span className="text-sm font-medium text-gray-700">
+                            Marquer comme favori
+                          </span>
+                        </label>
+                      </div>
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-green-200">

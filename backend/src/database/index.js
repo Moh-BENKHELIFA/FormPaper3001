@@ -34,6 +34,10 @@ async function updatePaperStatus(id, status) {
   return await PaperOperations.updatePaperStatus(id, status);
 }
 
+async function updatePaperFavorite(id, isFavorite) {
+  return await PaperOperations.updatePaperFavorite(id, isFavorite);
+}
+
 async function getPaperStats() {
   return await PaperOperations.getPaperStats();
 }
@@ -100,6 +104,7 @@ module.exports = {
   updatePaper,
   deletePaper,
   updatePaperStatus,
+  updatePaperFavorite,
   getPaperStats,
   searchPapers,
   getAllCategories,

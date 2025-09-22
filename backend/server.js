@@ -19,6 +19,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/MyPapers', express.static(path.join(__dirname, 'MyPapers')));
 
+// Servir les images extraites depuis n'importe quel dossier uploads/extracted_images
+app.use('/uploads/extracted_images', express.static(path.join(__dirname, 'uploads'), {
+  dotfiles: 'ignore',
+  index: false,
+  setHeaders: function (res, path) {
+    // Permettre seulement l'accès aux dossiers extracted_images
+    if (path.includes('extracted_images')) {
+      res.set('Cache-Control', 'public, max-age=31557600'); // 1 an
+    }
+  }
+}));
+
 // Servir l'image par défaut
 app.get('/api/default-image', (req, res) => {
   const defaultImagePath = path.join(__dirname, 'default_image.png');
@@ -166,6 +178,17 @@ app.patch('/api/papers/:id/status', async (req, res) => {
   }
 });
 
+app.patch('/api/papers/:id/favorite', async (req, res) => {
+  try {
+    const { is_favorite } = req.body;
+    const paper = await database.updatePaperFavorite(req.params.id, is_favorite);
+    res.json({ success: true, data: paper });
+  } catch (error) {
+    console.error('Error updating paper favorite status:', error);
+    res.status(500).json({ success: false, error: 'Failed to update paper favorite status' });
+  }
+});
+
 app.post('/api/papers/upload-pdf', upload.single('pdf'), async (req, res) => {
   try {
     if (!req.file) {
@@ -201,15 +224,26 @@ app.post('/api/papers/upload-pdf', upload.single('pdf'), async (req, res) => {
       fullMetadata = extractedData;
     }
 
-    res.json({
+    console.log('=== BACKEND DEBUG ===');
+    console.log('Images object:', images);
+    console.log('Images type:', typeof images);
+    console.log('Images.images:', images?.images);
+    console.log('Images.total:', images?.total);
+
+    const response = {
       success: true,
       data: {
         filePath,
         metadata: fullMetadata,
         images,
-        extractedDoi: extractedData?.doi || null
+        extractedDoi: extractedData?.doi || null,
+        originalFileName: req.file.originalname
       }
-    });
+    };
+
+    console.log('Response complete:', JSON.stringify(response, null, 2));
+
+    res.json(response);
 
   } catch (error) {
     console.error('Error processing PDF:', error);
@@ -315,6 +349,104 @@ app.post('/api/papers/:id/cover-image', imageUpload.single('coverImage'), async 
   }
 });
 
+// Route pour sauvegarder le PDF et les images sélectionnées après création du papier
+app.post('/api/papers/:id/save-pdf-assets', async (req, res) => {
+  try {
+    const paperId = req.params.id;
+    const { pdfPath, selectedImages, coverImagePath } = req.body;
+
+    // Récupérer les infos du papier
+    const paper = await database.getPaper(paperId);
+    if (!paper) {
+      return res.status(404).json({ success: false, error: 'Paper not found' });
+    }
+
+    const paperFolderPath = path.join(__dirname, 'MyPapers', paper.folder_path);
+
+    // S'assurer que le dossier du papier existe
+    await fs.ensureDir(paperFolderPath);
+
+    // Créer le nom du fichier PDF: titre_id.pdf
+    let cleanTitle = paper.title
+      .replace(/[^\w\s-]/g, '') // Supprimer les caractères spéciaux
+      .replace(/\s+/g, '_') // Remplacer les espaces par des underscores
+      .toLowerCase();
+
+    if (cleanTitle.length > 50) {
+      cleanTitle = cleanTitle.substring(0, 50);
+    }
+
+    const pdfFileName = `${cleanTitle}_${paperId}.pdf`;
+    const finalPdfPath = path.join(paperFolderPath, pdfFileName);
+
+    // Copier le PDF vers le dossier du papier
+    if (await fs.pathExists(pdfPath)) {
+      await fs.copyFile(pdfPath, finalPdfPath);
+      console.log(`✅ PDF sauvegardé: ${finalPdfPath}`);
+    }
+
+    // Créer le dossier saved_images s'il y a des images sélectionnées
+    let savedImagesInfo = [];
+    if (selectedImages && selectedImages.length > 0) {
+      const savedImagesDir = path.join(paperFolderPath, 'saved_images');
+      await fs.ensureDir(savedImagesDir);
+
+      for (const imagePath of selectedImages) {
+        if (await fs.pathExists(imagePath)) {
+          const imageFileName = path.basename(imagePath);
+          const savedImagePath = path.join(savedImagesDir, imageFileName);
+          await fs.copyFile(imagePath, savedImagePath);
+          savedImagesInfo.push({
+            original: imagePath,
+            saved: `MyPapers/${paper.folder_path}/saved_images/${imageFileName}`
+          });
+          console.log(`✅ Image sauvegardée: ${savedImagePath}`);
+        }
+      }
+    }
+
+    // Gérer l'image de couverture si spécifiée
+    let coverImageUrl = null;
+    if (coverImagePath && await fs.pathExists(coverImagePath)) {
+      const coverFileName = `paper_Cover_${paperId}${path.extname(coverImagePath)}`;
+      const finalCoverPath = path.join(paperFolderPath, coverFileName);
+      await fs.copyFile(coverImagePath, finalCoverPath);
+      coverImageUrl = `MyPapers/${paper.folder_path}/${coverFileName}`;
+
+      // Mettre à jour le papier avec l'image de couverture
+      await database.updatePaper(paperId, { ...paper, image: coverImageUrl });
+      console.log(`✅ Image de couverture sauvegardée: ${finalCoverPath}`);
+    }
+
+    // Nettoyer les fichiers temporaires
+    try {
+      if (await fs.pathExists(pdfPath)) {
+        await fs.remove(pdfPath);
+      }
+      for (const imagePath of selectedImages || []) {
+        if (await fs.pathExists(imagePath)) {
+          await fs.remove(imagePath);
+        }
+      }
+    } catch (cleanupError) {
+      console.warn('Warning: Could not clean up temporary files:', cleanupError);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        pdfPath: `MyPapers/${paper.folder_path}/${pdfFileName}`,
+        savedImages: savedImagesInfo,
+        coverImage: coverImageUrl
+      }
+    });
+
+  } catch (error) {
+    console.error('Error saving PDF assets:', error);
+    res.status(500).json({ success: false, error: 'Failed to save PDF assets' });
+  }
+});
+
 async function fetchDOIMetadata(doi) {
   const axios = require('axios');
 
@@ -380,7 +512,11 @@ async function extractDOIFromPDF(filePath) {
 async function extractImagesFromPDF(filePath) {
   return new Promise((resolve, reject) => {
     const pythonScript = path.join(__dirname, 'scripts', 'extract_images.py');
-    const python = spawn('python', [pythonScript, filePath]);
+
+    // Créer un dossier pour les images extraites
+    const extractedDir = path.join(path.dirname(filePath), 'extracted_images');
+
+    const python = spawn('python', [pythonScript, filePath, extractedDir]);
 
     let result = '';
     let error = '';
@@ -396,9 +532,28 @@ async function extractImagesFromPDF(filePath) {
     python.on('close', (code) => {
       if (code === 0) {
         try {
-          const images = JSON.parse(result);
-          resolve(images);
+          // Le nouveau script retourne directement un tableau d'images
+          const extractedImages = JSON.parse(result);
+
+          // Transformer les chemins d'images en chemins relatifs pour le serveur web
+          const webImages = extractedImages.map(img => {
+            // Convertir le chemin absolu en chemin relatif depuis le dossier backend
+            const relativePath = path.relative(__dirname, img.path);
+            // Remplacer les backslashes par des slashes pour les URLs
+            const webPath = relativePath.replace(/\\/g, '/');
+            return webPath;
+          });
+
+          const imagesResult = {
+            images: webImages,
+            total: extractedImages.length
+          };
+
+          console.log(`✅ ${extractedImages.length} images extraites du PDF`);
+          resolve(imagesResult);
         } catch (e) {
+          console.error('Error parsing image extraction result:', e);
+          console.error('Raw result:', result);
           resolve({ images: [], total: 0 });
         }
       } else {

@@ -18,7 +18,8 @@
       "Bash(tasklist:*)",
       "Bash(del formpaper.db)",
       "Bash(del C:UsersmbenkhelDevWebFormPaper3001temp_image_upload_component.tsx)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(PORT=5004 node server.js)"
     ],
     "deny": [],
     "ask": []

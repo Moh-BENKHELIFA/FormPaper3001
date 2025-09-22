@@ -5,7 +5,10 @@ export interface Paper {
   publication_date: string;
   conference: string;
   conference_short?: string;
-  reading_status: 'unread' | 'reading' | 'read' | 'favorite';
+  reading_status: 'unread' | 'reading' | 'read';
+  is_favorite: number;
+  year?: number;
+  month?: number;
   image: string | null;
   doi: string | null;
   url: string | null;
@@ -40,6 +43,10 @@ export interface PaperFormData {
   publication_date: string;
   conference: string;
   conference_short?: string;
+  reading_status?: 'unread' | 'reading' | 'read';
+  is_favorite?: number;
+  year?: number;
+  month?: number;
   doi?: string;
   url?: string;
   categories: string[];

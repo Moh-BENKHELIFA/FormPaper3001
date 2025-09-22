@@ -111,8 +111,8 @@ class PaperOperations {
 
     // D'abord insérer l'article pour obtenir l'ID
     const sql = `
-      INSERT INTO papers (title, authors, publication_date, conference, conference_short, reading_status, image, doi, url, folder_path)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO papers (title, authors, publication_date, conference, conference_short, reading_status, is_favorite, year, month, image, doi, url, folder_path)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -122,6 +122,9 @@ class PaperOperations {
       paperData.conference,
       paperData.conference_short || null,
       paperData.reading_status || 'unread',
+      paperData.is_favorite || 0,
+      paperData.year || null,
+      paperData.month || null,
       paperData.image,
       paperData.doi,
       paperData.url,
@@ -189,12 +192,24 @@ class PaperOperations {
   }
 
   static async updatePaperStatus(id, status) {
-    if (!['unread', 'reading', 'read', 'favorite'].includes(status)) {
+    if (!['unread', 'reading', 'read'].includes(status)) {
       throw new Error('Invalid reading status');
     }
 
     const sql = 'UPDATE papers SET reading_status = ? WHERE id = ?';
     const result = await db.run(sql, [status, id]);
+
+    if (result.changes === 0) {
+      throw new Error('Paper not found');
+    }
+
+    return this.getPaper(id);
+  }
+
+  static async updatePaperFavorite(id, isFavorite) {
+    const favorite = isFavorite ? 1 : 0;
+    const sql = 'UPDATE papers SET is_favorite = ? WHERE id = ?';
+    const result = await db.run(sql, [favorite, id]);
 
     if (result.changes === 0) {
       throw new Error('Paper not found');

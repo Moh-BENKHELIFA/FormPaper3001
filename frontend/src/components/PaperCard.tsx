@@ -34,6 +34,10 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange }) => {
   };
 
   const handleCardClick = () => {
+    // Ne fait rien au simple clic
+  };
+
+  const handleCardDoubleClick = () => {
     goToNotes(paper.id);
   };
 
@@ -49,6 +53,23 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange }) => {
       onStatusChange?.();
     } catch (err) {
       error('Erreur', 'Impossible de mettre à jour le statut');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleFavoriteToggle = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+
+    if (isUpdating) return;
+
+    try {
+      setIsUpdating(true);
+      await paperService.updateFavoriteStatus(paper.id, !paper.is_favorite);
+      success(paper.is_favorite ? 'Retiré des favoris' : 'Ajouté aux favoris');
+      onStatusChange?.();
+    } catch (err) {
+      error('Erreur', 'Impossible de mettre à jour les favoris');
     } finally {
       setIsUpdating(false);
     }
@@ -77,18 +98,26 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange }) => {
         return '#F59E0B'; // yellow-500
       case 'read':
         return '#10B981'; // green-500
-      case 'favorite':
-        return '#EF4444'; // red-500
       default:
         return '#6B7280'; // gray-500
     }
+  };
+
+  const formatDate = () => {
+    if (paper.year) {
+      if (paper.month) {
+        const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+        return `${monthNames[paper.month - 1]} ${paper.year}`;
+      }
+      return paper.year.toString();
+    }
+    return null;
   };
 
   const statusOptions = [
     { value: 'unread', label: 'Non lu', icon: BookOpen },
     { value: 'reading', label: 'En cours', icon: Eye },
     { value: 'read', label: 'Lu', icon: CheckCircle },
-    { value: 'favorite', label: 'Favori', icon: Heart },
   ] as const;
 
   const renderTags = () => {
@@ -158,9 +187,24 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange }) => {
 
   return (
     <div
-      className="card p-4 cursor-pointer transform transition-transform hover:scale-105 flex flex-col h-full"
+      className="card p-4 cursor-pointer transform transition-transform hover:scale-105 flex flex-col h-full relative"
       onClick={handleCardClick}
+      onDoubleClick={handleCardDoubleClick}
     >
+      {/* Bouton coeur favori en haut à droite */}
+      <button
+        onClick={handleFavoriteToggle}
+        className="absolute top-2 right-2 p-1 rounded-full hover:bg-gray-100 transition-colors z-10"
+        disabled={isUpdating}
+      >
+        <Heart
+          className={`w-5 h-5 transition-colors ${
+            paper.is_favorite
+              ? 'text-red-500 fill-red-500'
+              : 'text-gray-400 hover:text-red-400'
+          }`}
+        />
+      </button>
       <div className="w-full h-48 mb-4 overflow-hidden rounded-lg flex-shrink-0">
         <img
           src={paper.image ? `/api/${paper.image}` : '/api/default-image'}
@@ -178,9 +222,12 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange }) => {
           <p className="text-sm text-gray-600 line-clamp-1 mb-1">
             {paper.authors}
           </p>
-          <p className="text-xs text-gray-500">
-            {paper.conference}
-          </p>
+          <div className="flex justify-between items-center text-xs text-gray-500">
+            <span>{paper.conference}</span>
+            {formatDate() && (
+              <span className="font-medium">{formatDate()}</span>
+            )}
+          </div>
         </div>
 
         {/* Tags Section */}
@@ -237,7 +284,15 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange }) => {
         <div className="mt-auto space-y-2">
           {paper.doi && (
             <div className="text-xs text-gray-500 truncate">
-              DOI: {paper.doi}
+              DOI: <a
+                href={`https://doi.org/${paper.doi}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {paper.doi}
+              </a>
             </div>
           )}
           <div className="text-xs text-gray-400">

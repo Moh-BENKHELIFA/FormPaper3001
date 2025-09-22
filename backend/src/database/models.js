@@ -7,6 +7,9 @@ class Paper {
     this.conference = data.conference;
     this.conference_short = data.conference_short;
     this.reading_status = data.reading_status || 'unread';
+    this.is_favorite = data.is_favorite || 0;
+    this.year = data.year;
+    this.month = data.month;
     this.image = data.image;
     this.doi = data.doi;
     this.url = data.url;
@@ -28,7 +31,7 @@ class Paper {
       errors.push('Authors are required');
     }
 
-    if (data.reading_status && !['unread', 'reading', 'read', 'favorite'].includes(data.reading_status)) {
+    if (data.reading_status && !['unread', 'reading', 'read'].includes(data.reading_status)) {
       errors.push('Invalid reading status');
     }
 
@@ -67,7 +70,11 @@ class Paper {
       authors: this.authors,
       publication_date: this.publication_date,
       conference: this.conference,
+      conference_short: this.conference_short,
       reading_status: this.reading_status,
+      is_favorite: this.is_favorite,
+      year: this.year,
+      month: this.month,
       image: this.image,
       doi: this.doi,
       url: this.url,
