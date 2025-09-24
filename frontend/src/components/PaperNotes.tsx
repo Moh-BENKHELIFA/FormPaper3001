@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, FileText, ExternalLink, Eye, BookOpen, CheckCircle, Heart } from 'lucide-react';
+import { ArrowLeft, Save, FileText, Globe, Eye, BookOpen, CheckCircle, Heart } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -276,7 +276,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
           </div>
 
           {/* Colonne de droite - Actions sur 3 lignes */}
-          <div className="flex flex-col justify-between flex-shrink-0 py-1 min-w-0">
+          <div className="flex flex-col justify-between flex-shrink-0 min-w-0" style={{ paddingTop: '8px', paddingBottom: '4px' }}>
             {/* Ligne 1 - Boutons Favoris, PDF, DOI */}
             <div className="flex items-center justify-end space-x-1">
               {/* Bouton Favoris */}
@@ -315,7 +315,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
                   className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
                   title={`DOI: ${paper.doi}`}
                 >
-                  <ExternalLink className="w-4 h-4 text-green-600" />
+                  <Globe className="w-4 h-4 text-blue-600" />
                 </a>
               )}
             </div>

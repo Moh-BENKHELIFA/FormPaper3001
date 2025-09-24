@@ -77,13 +77,21 @@
       "type": "image",
       "order": 7,
       "createdAt": "2025-09-24T09:37:55.073Z",
-      "updatedAt": "2025-09-24T09:37:55.073Z",
+      "updatedAt": "2025-09-24T18:24:57.927Z",
       "url": "http://localhost:5004/api/image/5/ee440874-1abf-4269-9c12-4367b39293e2.png",
       "alt": "Image collée",
       "caption": "",
-      "width": 100
+      "width": 79
+    },
+    {
+      "id": "block_1758738290192_b7t1wcdr0",
+      "type": "text",
+      "order": 8,
+      "createdAt": "2025-09-24T18:24:50.192Z",
+      "updatedAt": "2025-09-24T18:24:50.192Z",
+      "content": ""
     }
   ],
-  "lastModified": "2025-09-24T10:25:00.441Z",
+  "lastModified": "2025-09-24T18:25:04.024Z",
   "version": "1.0"
 }

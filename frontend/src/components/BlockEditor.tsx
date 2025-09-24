@@ -14,6 +14,7 @@ import CodeBlock from './blocks/CodeBlock';
 import ImageBlock from './blocks/ImageBlock';
 import TableBlock from './blocks/TableBlock';
 import TodoBlock from './blocks/TodoBlock';
+import SeparatorBlock from './blocks/SeparatorBlock';
 
 interface BlockEditorProps {
   articleId?: string;
@@ -152,6 +153,67 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
     setSelectedBlockIndex(index);
   }, []);
 
+  const handleEditorClick = useCallback((e: React.MouseEvent) => {
+    // Check if the click is on the editor background (not on a block or its children)
+    const target = e.target as HTMLElement;
+    const isEditorBackground = target === e.currentTarget || target.classList.contains('editor-background');
+
+    if (isEditorBackground) {
+      // Defocus all blocks
+      setFocusedBlockIndex(null);
+      setSelectedBlockIndex(null);
+      setShowSlashCommands(false);
+      setSlashQuery('');
+      setSlashMenuPosition(null);
+    }
+  }, []);
+
+  const handleCreateNewBlock = useCallback(() => {
+    if (focusedBlockIndex !== null) {
+      // Create new block after the focused block
+      const newBlock = blockFactory.createBlock('text');
+      setBlocks(prevBlocks => {
+        const newBlocks = [...prevBlocks];
+        newBlocks.splice(focusedBlockIndex + 1, 0, newBlock);
+        return newBlocks.map((block, i) => ({ ...block, order: i }));
+      });
+
+      // Focus the new block
+      setTimeout(() => {
+        setFocusedBlockIndex(focusedBlockIndex + 1);
+      }, 0);
+    } else {
+      // Create new block at the end if no block is focused
+      const newBlock = blockFactory.createBlock('text');
+      setBlocks(prevBlocks => {
+        const newBlocks = [...prevBlocks, newBlock];
+        return newBlocks.map((block, i) => ({ ...block, order: i }));
+      });
+
+      // Focus the new block
+      setTimeout(() => {
+        setFocusedBlockIndex(blocks.length);
+      }, 0);
+    }
+  }, [focusedBlockIndex, blocks.length]);
+
+  // Global keyboard event listener for Ctrl+Enter
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Handle Ctrl+Enter to create new block - works even when no block is focused
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleCreateNewBlock();
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [handleCreateNewBlock]);
+
   const handleEnterPressed = useCallback((index: number) => {
     // Hide slash commands when creating new block
     setShowSlashCommands(false);
@@ -263,6 +325,127 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
           setSlashQuery('');
           break;
       }
+      return;
+    }
+
+    // Handle Ctrl+Enter to create new block
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      handleCreateNewBlock();
+      return;
+    }
+
+    // Handle arrow key navigation between blocks
+    if (!e.ctrlKey && !e.shiftKey && !e.altKey && focusedBlockIndex !== null) {
+      const activeElement = document.activeElement;
+      if (!activeElement) return;
+
+      // Skip navigation if we're inside a table, todo block, or list block - let them handle their own navigation
+      if (activeElement.closest('table') || activeElement.closest('[data-todo-block="true"]') || activeElement.closest('[data-list-block="true"]')) {
+        return;
+      }
+
+      if (e.key === 'ArrowUp' && focusedBlockIndex > 0) {
+        // Get cursor position for text elements
+        let shouldMoveUp = false;
+
+        if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') {
+          const input = activeElement as HTMLInputElement | HTMLTextAreaElement;
+          const cursorPosition = input.selectionStart || 0;
+          const textBeforeCursor = input.value.substring(0, cursorPosition);
+          const lastNewlineIndex = textBeforeCursor.lastIndexOf('\n');
+
+          // If cursor is on the first line (no newline before cursor position)
+          shouldMoveUp = lastNewlineIndex === -1;
+        } else if (activeElement.getAttribute('contenteditable') === 'true') {
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const elementRect = activeElement.getBoundingClientRect();
+
+            // Check if cursor is at the top line (within 30px of element top)
+            shouldMoveUp = rect.top - elementRect.top <= 30;
+          }
+        }
+
+        if (shouldMoveUp) {
+          e.preventDefault();
+          setFocusedBlockIndex(focusedBlockIndex - 1);
+          setTimeout(() => {
+            const prevBlock = blockRefs.current[focusedBlockIndex - 1];
+            if (prevBlock) {
+              const focusableElement = prevBlock.querySelector('input, textarea, [contenteditable]') as HTMLElement;
+              if (focusableElement) {
+                focusableElement.focus();
+                // Move cursor to end for previous block
+                if (focusableElement.tagName === 'INPUT' || focusableElement.tagName === 'TEXTAREA') {
+                  const input = focusableElement as HTMLInputElement;
+                  input.setSelectionRange(input.value.length, input.value.length);
+                } else if (focusableElement.getAttribute('contenteditable') === 'true') {
+                  // Move cursor to end of contenteditable
+                  const range = document.createRange();
+                  const selection = window.getSelection();
+                  range.selectNodeContents(focusableElement);
+                  range.collapse(false);
+                  selection?.removeAllRanges();
+                  selection?.addRange(range);
+                }
+              }
+            }
+          }, 0);
+        }
+      } else if (e.key === 'ArrowDown' && focusedBlockIndex < blocks.length - 1) {
+        // Get cursor position for text elements
+        let shouldMoveDown = false;
+
+        if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') {
+          const input = activeElement as HTMLInputElement | HTMLTextAreaElement;
+          const cursorPosition = input.selectionStart || 0;
+          const textAfterCursor = input.value.substring(cursorPosition);
+          const nextNewlineIndex = textAfterCursor.indexOf('\n');
+
+          // If cursor is on the last line (no newline after cursor position)
+          shouldMoveDown = nextNewlineIndex === -1;
+        } else if (activeElement.getAttribute('contenteditable') === 'true') {
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const elementRect = activeElement.getBoundingClientRect();
+
+            // Check if cursor is at the bottom line (within 30px of element bottom)
+            shouldMoveDown = elementRect.bottom - rect.bottom <= 30;
+          }
+        }
+
+        if (shouldMoveDown) {
+          e.preventDefault();
+          setFocusedBlockIndex(focusedBlockIndex + 1);
+          setTimeout(() => {
+            const nextBlock = blockRefs.current[focusedBlockIndex + 1];
+            if (nextBlock) {
+              const focusableElement = nextBlock.querySelector('input, textarea, [contenteditable]') as HTMLElement;
+              if (focusableElement) {
+                focusableElement.focus();
+                // Move cursor to beginning for next block
+                if (focusableElement.tagName === 'INPUT' || focusableElement.tagName === 'TEXTAREA') {
+                  (focusableElement as HTMLInputElement).setSelectionRange(0, 0);
+                } else if (focusableElement.getAttribute('contenteditable') === 'true') {
+                  // Move cursor to beginning of contenteditable
+                  const range = document.createRange();
+                  const selection = window.getSelection();
+                  range.selectNodeContents(focusableElement);
+                  range.collapse(true);
+                  selection?.removeAllRanges();
+                  selection?.addRange(range);
+                }
+              }
+            }
+          }, 0);
+        }
+      }
     }
 
     // Handle Ctrl+V for pasting images
@@ -270,7 +453,7 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
       // Let the paste event handler take care of this
       return;
     }
-  }, [showSlashCommands, slashSuggestions, selectedSuggestionIndex, handleSlashCommandSelect]);
+  }, [showSlashCommands, slashSuggestions, selectedSuggestionIndex, handleSlashCommandSelect, focusedBlockIndex, blocks.length, blockRefs]);
 
   const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
@@ -378,8 +561,8 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
   }, [focusedBlockIndex, blocks, articleId]);
 
   const renderBlock = (block: Block, index: number) => {
-    const isSelected = selectedBlockIndex === index;
-    const isFocused = focusedBlockIndex === index;
+    const isSelected = selectedBlockIndex === index && selectedBlockIndex !== null;
+    const isFocused = focusedBlockIndex === index && focusedBlockIndex !== null;
 
     const commonProps = {
       block,
@@ -389,6 +572,62 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
       onDelete: () => handleBlockDelete(index),
       onEnterPressed: () => handleEnterPressed(index),
       readonly,
+    };
+
+    // Navigation callbacks for TableBlock
+    const handleNavigateUp = () => {
+      if (index > 0) {
+        setFocusedBlockIndex(index - 1);
+        setTimeout(() => {
+          const prevBlock = blockRefs.current[index - 1];
+          if (prevBlock) {
+            const focusableElement = prevBlock.querySelector('input, textarea, [contenteditable]') as HTMLElement;
+            if (focusableElement) {
+              focusableElement.focus();
+              // Move cursor to end for previous block
+              if (focusableElement.tagName === 'INPUT' || focusableElement.tagName === 'TEXTAREA') {
+                const input = focusableElement as HTMLInputElement;
+                input.setSelectionRange(input.value.length, input.value.length);
+              } else if (focusableElement.getAttribute('contenteditable') === 'true') {
+                // Move cursor to end of contenteditable
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(focusableElement);
+                range.collapse(false);
+                selection?.removeAllRanges();
+                selection?.addRange(range);
+              }
+            }
+          }
+        }, 0);
+      }
+    };
+
+    const handleNavigateDown = () => {
+      if (index < blocks.length - 1) {
+        setFocusedBlockIndex(index + 1);
+        setTimeout(() => {
+          const nextBlock = blockRefs.current[index + 1];
+          if (nextBlock) {
+            const focusableElement = nextBlock.querySelector('input, textarea, [contenteditable]') as HTMLElement;
+            if (focusableElement) {
+              focusableElement.focus();
+              // Move cursor to beginning for next block
+              if (focusableElement.tagName === 'INPUT' || focusableElement.tagName === 'TEXTAREA') {
+                (focusableElement as HTMLInputElement).setSelectionRange(0, 0);
+              } else if (focusableElement.getAttribute('contenteditable') === 'true') {
+                // Move cursor to beginning of contenteditable
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(focusableElement);
+                range.collapse(true);
+                selection?.removeAllRanges();
+                selection?.addRange(range);
+              }
+            }
+          }
+        }, 0);
+      }
     };
 
     let blockComponent;
@@ -402,7 +641,7 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
         blockComponent = <HeadingBlock {...commonProps} block={block as any} />;
         break;
       case 'list':
-        blockComponent = <ListBlock {...commonProps} block={block as any} />;
+        blockComponent = <ListBlock {...commonProps} block={block as any} onNavigateUp={handleNavigateUp} onNavigateDown={handleNavigateDown} />;
         break;
       case 'quote':
         blockComponent = <QuoteBlock {...commonProps} block={block as any} />;
@@ -414,10 +653,13 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
         blockComponent = <ImageBlock {...commonProps} block={block as any} articleId={articleId} />;
         break;
       case 'table':
-        blockComponent = <TableBlock {...commonProps} block={block as any} />;
+        blockComponent = <TableBlock {...commonProps} block={block as any} onNavigateUp={handleNavigateUp} onNavigateDown={handleNavigateDown} />;
         break;
       case 'todo':
-        blockComponent = <TodoBlock {...commonProps} block={block as any} />;
+        blockComponent = <TodoBlock {...commonProps} block={block as any} onNavigateUp={handleNavigateUp} onNavigateDown={handleNavigateDown} />;
+        break;
+      case 'separator':
+        blockComponent = <SeparatorBlock {...commonProps} block={block as any} />;
         break;
       default:
         blockComponent = <TextBlock {...commonProps} block={block as any} />;
@@ -455,15 +697,40 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
   return (
     <div
       ref={editorRef}
-      className="w-full max-w-4xl mx-auto p-4 min-h-screen"
+      className="w-full max-w-4xl mx-auto p-4 min-h-screen editor-background"
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
+      onClick={handleEditorClick}
       tabIndex={-1}
     >
       {/* Blocks */}
       <div className="space-y-1">
         {blocks.map((block, index) => renderBlock(block, index))}
       </div>
+
+      {/* Add New Block Button */}
+      <div className="mt-4 mb-8 editor-background" onClick={handleEditorClick}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCreateNewBlock();
+          }}
+          className="flex items-center justify-center w-full py-3 px-4 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-all duration-200 bg-gray-50 hover:bg-gray-100"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Créer un nouveau bloc
+          <span className="ml-2 text-xs text-gray-400 font-mono">Ctrl+Entrée</span>
+        </button>
+      </div>
+
+      {/* Empty space at the bottom for clicking to defocus */}
+      <div
+        className="editor-background"
+        style={{ minHeight: '100px', width: '100%' }}
+        onClick={handleEditorClick}
+      ></div>
 
       {/* Slash Command Suggestions */}
       {showSlashCommands && slashSuggestions.length > 0 && focusedBlockIndex !== null && slashMenuPosition && (

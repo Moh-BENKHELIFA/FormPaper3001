@@ -84,6 +84,13 @@ class BlockFactoryImpl implements BlockFactory {
           items: content?.items || [{ text: '', completed: false }],
         };
 
+      case 'separator':
+        return {
+          ...baseData,
+          type: 'separator',
+          style: content?.style || 'solid',
+        };
+
       default:
         // Fallback to text block
         return {
@@ -114,6 +121,8 @@ class BlockFactoryImpl implements BlockFactory {
         return { headers: ['Colonne 1', 'Colonne 2'], rows: [['', '']] };
       case 'todo':
         return { items: [{ text: '', completed: false }] };
+      case 'separator':
+        return { style: 'solid' };
       default:
         return '';
     }

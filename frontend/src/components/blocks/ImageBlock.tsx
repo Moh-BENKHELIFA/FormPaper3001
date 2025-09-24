@@ -169,7 +169,11 @@ const ImageBlock: React.FC<ImageBlockProps> = ({
   }
 
   return (
-    <div className="w-full">
+    <div
+      className="w-full"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
       <div className="space-y-3">
         {/* Image display */}
         <div className="relative group">

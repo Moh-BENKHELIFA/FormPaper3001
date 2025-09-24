@@ -1,4 +1,4 @@
-export type BlockType = 'text' | 'h1' | 'h2' | 'h3' | 'list' | 'quote' | 'code' | 'image' | 'table' | 'todo';
+export type BlockType = 'text' | 'h1' | 'h2' | 'h3' | 'list' | 'quote' | 'code' | 'image' | 'table' | 'todo' | 'separator';
 
 export interface BaseBlockData {
   id: string;
@@ -57,7 +57,12 @@ export interface TodoBlockData extends BaseBlockData {
   completed: boolean;
 }
 
-export type Block = TextBlockData | HeadingBlockData | ListBlockData | QuoteBlockData | CodeBlockData | ImageBlockData | TableBlockData | TodoBlockData;
+export interface SeparatorBlockData extends BaseBlockData {
+  type: 'separator';
+  style?: 'solid' | 'dashed' | 'dotted';
+}
+
+export type Block = TextBlockData | HeadingBlockData | ListBlockData | QuoteBlockData | CodeBlockData | ImageBlockData | TableBlockData | TodoBlockData | SeparatorBlockData;
 
 // Legacy support
 export interface LegacyBlock {

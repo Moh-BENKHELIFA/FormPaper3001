@@ -10,6 +10,8 @@ interface TodoBlockProps {
   onUpdate: (block: TodoBlockData) => void;
   onDelete: () => void;
   onEnterPressed: () => void;
+  onNavigateUp?: () => void;
+  onNavigateDown?: () => void;
   readonly?: boolean;
 }
 
@@ -20,6 +22,8 @@ const TodoBlock: React.FC<TodoBlockProps> = ({
   onUpdate,
   onDelete,
   onEnterPressed,
+  onNavigateUp,
+  onNavigateDown,
   readonly = false,
 }) => {
   const [items, setItems] = useState(block.items || []);
@@ -80,16 +84,28 @@ const TodoBlock: React.FC<TodoBlockProps> = ({
       }
     }
 
-    if (e.key === 'ArrowDown' && index < items.length - 1) {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      itemRefs.current[index + 1]?.focus();
-      setFocusedIndex(index + 1);
+      if (index < items.length - 1) {
+        // Navigate to next item in the list
+        itemRefs.current[index + 1]?.focus();
+        setFocusedIndex(index + 1);
+      } else {
+        // We're on the last item, navigate to next block
+        onNavigateDown?.();
+      }
     }
 
-    if (e.key === 'ArrowUp' && index > 0) {
+    if (e.key === 'ArrowUp') {
       e.preventDefault();
-      itemRefs.current[index - 1]?.focus();
-      setFocusedIndex(index - 1);
+      if (index > 0) {
+        // Navigate to previous item in the list
+        itemRefs.current[index - 1]?.focus();
+        setFocusedIndex(index - 1);
+      } else {
+        // We're on the first item, navigate to previous block
+        onNavigateUp?.();
+      }
     }
 
     if (e.key === 'Tab') {
@@ -152,7 +168,7 @@ const TodoBlock: React.FC<TodoBlockProps> = ({
   const progress = getProgress();
 
   return (
-    <div className="w-full">
+    <div className="w-full" data-todo-block="true">
 
       {/* Todo items */}
       <div className="space-y-2">

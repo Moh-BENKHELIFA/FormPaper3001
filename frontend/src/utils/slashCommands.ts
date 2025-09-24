@@ -91,6 +91,15 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: ['todo', 'task', 'checkbox', 'tache'],
     shortcut: '/todo',
   },
+  {
+    id: 'separator',
+    label: 'Séparateur',
+    description: 'Ligne horizontale pour séparer le contenu',
+    type: 'separator',
+    icon: '➖',
+    keywords: ['separator', 'separateur', 'divider', 'ligne', 'hr'],
+    shortcut: '/separator',
+  },
 ];
 
 export class SlashCommandMatcher {

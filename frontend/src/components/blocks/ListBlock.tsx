@@ -10,6 +10,8 @@ interface ListBlockProps {
   onUpdate: (block: ListBlockData) => void;
   onDelete: () => void;
   onEnterPressed: () => void;
+  onNavigateUp?: () => void;
+  onNavigateDown?: () => void;
   readonly?: boolean;
 }
 
@@ -20,6 +22,8 @@ const ListBlock: React.FC<ListBlockProps> = ({
   onUpdate,
   onDelete,
   onEnterPressed,
+  onNavigateUp,
+  onNavigateDown,
   readonly = false,
 }) => {
   const [items, setItems] = useState(block.items);
@@ -68,16 +72,28 @@ const ListBlock: React.FC<ListBlockProps> = ({
       }
     }
 
-    if (e.key === 'ArrowDown' && index < items.length - 1) {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      itemRefs.current[index + 1]?.focus();
-      setFocusedIndex(index + 1);
+      if (index < items.length - 1) {
+        // Navigate to next item in the list
+        itemRefs.current[index + 1]?.focus();
+        setFocusedIndex(index + 1);
+      } else {
+        // We're on the last item, navigate to next block
+        onNavigateDown?.();
+      }
     }
 
-    if (e.key === 'ArrowUp' && index > 0) {
+    if (e.key === 'ArrowUp') {
       e.preventDefault();
-      itemRefs.current[index - 1]?.focus();
-      setFocusedIndex(index - 1);
+      if (index > 0) {
+        // Navigate to previous item in the list
+        itemRefs.current[index - 1]?.focus();
+        setFocusedIndex(index - 1);
+      } else {
+        // We're on the first item, navigate to previous block
+        onNavigateUp?.();
+      }
     }
   };
 
@@ -120,7 +136,7 @@ const ListBlock: React.FC<ListBlockProps> = ({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full" data-list-block="true">
       <div className="flex items-center justify-between mb-2">
         <button
           onClick={toggleOrdered}

@@ -10,6 +10,8 @@ interface TableBlockProps {
   onUpdate: (block: TableBlockData) => void;
   onDelete: () => void;
   onEnterPressed: () => void;
+  onNavigateUp?: () => void;
+  onNavigateDown?: () => void;
   readonly?: boolean;
 }
 
@@ -20,6 +22,8 @@ const TableBlock: React.FC<TableBlockProps> = ({
   onUpdate,
   onDelete,
   onEnterPressed,
+  onNavigateUp,
+  onNavigateDown,
   readonly = false,
 }) => {
   const [rows, setRows] = useState(block.rows || []);
@@ -119,6 +123,9 @@ const TableBlock: React.FC<TableBlockProps> = ({
         if (currentRow > 0) {
           cellRefs.current[currentRow - 1]?.[colIndex]?.focus();
           setFocusedCell({row: currentRow - 1, col: colIndex});
+        } else {
+          // We're on the first row (headers), navigate to previous block
+          onNavigateUp?.();
         }
         break;
 
@@ -127,6 +134,9 @@ const TableBlock: React.FC<TableBlockProps> = ({
         if (currentRow < totalRows - 1) {
           cellRefs.current[currentRow + 1]?.[colIndex]?.focus();
           setFocusedCell({row: currentRow + 1, col: colIndex});
+        } else {
+          // We're on the last row, navigate to next block
+          onNavigateDown?.();
         }
         break;
 

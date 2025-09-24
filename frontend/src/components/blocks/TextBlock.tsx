@@ -54,10 +54,8 @@ const TextBlock: React.FC<TextBlockProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      onEnterPressed();
-    }
+    // Entrée et Maj+Entrée = saut de ligne (comportement par défaut du textarea)
+    // Pas de création de nouveau bloc depuis TextBlock
 
     if (e.key === 'Backspace' && content === '' && !readonly) {
       e.preventDefault();
