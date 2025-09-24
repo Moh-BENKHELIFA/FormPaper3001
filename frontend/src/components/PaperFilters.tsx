@@ -12,7 +12,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
   onFiltersChange,
   papers,
 }) => {
-  const handleFilterChange = (key: keyof PaperFiltersType, value: string) => {
+  const handleFilterChange = (key: keyof PaperFiltersType, value: string | boolean) => {
     onFiltersChange({
       ...filters,
       [key]: value,
@@ -24,7 +24,6 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
     { value: 'unread', label: 'Non lus' },
     { value: 'reading', label: 'En cours' },
     { value: 'read', label: 'Lus' },
-    { value: 'favorite', label: 'Favoris' },
   ];
 
   const sortOptions = [
@@ -38,7 +37,39 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
   ).sort();
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Favoris
+        </label>
+        <div className="space-y-2">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="showFavorites"
+              checked={filters.showFavorites}
+              onChange={(e) => handleFilterChange('showFavorites', e.target.checked)}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            />
+            <label htmlFor="showFavorites" className="ml-2 text-sm text-gray-700">
+              Favoris uniquement
+            </label>
+          </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="sortFavorites"
+              checked={filters.sortFavorites}
+              onChange={(e) => handleFilterChange('sortFavorites', e.target.checked)}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            />
+            <label htmlFor="sortFavorites" className="ml-2 text-sm text-gray-700">
+              Trier favoris en premier
+            </label>
+          </div>
+        </div>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Statut de lecture

@@ -17,6 +17,8 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
     search: '',
     status: '',
     category: '',
+    showFavorites: false,
+    sortFavorites: false,
     sortBy: 'date',
     sortOrder: 'desc',
   });
@@ -24,6 +26,17 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
   useEffect(() => {
     applyFilters();
   }, [papers, filters, searchQuery]);
+
+  const getFirstAuthorLastName = (authors: string): string => {
+    // Séparer les auteurs par virgule et prendre le premier
+    const firstAuthor = authors.split(',')[0].trim();
+
+    // Séparer les mots du premier auteur
+    const words = firstAuthor.split(' ').filter(word => word.length > 0);
+
+    // Le nom de famille est généralement le dernier mot
+    return words.length > 0 ? words[words.length - 1] : firstAuthor;
+  };
 
   const applyFilters = () => {
     let filtered = [...papers];
@@ -41,7 +54,24 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
       filtered = filtered.filter(paper => paper.reading_status === filters.status);
     }
 
+    if (filters.showFavorites) {
+      filtered = filtered.filter(paper => paper.is_favorite);
+    }
+
+    if (filters.category) {
+      filtered = filtered.filter(paper => paper.conference === filters.category);
+    }
+
     filtered.sort((a, b) => {
+      // Si le tri par favoris est activé, trier d'abord par favoris
+      if (filters.sortFavorites) {
+        const favoriteComparison = (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0);
+        if (favoriteComparison !== 0) {
+          return favoriteComparison;
+        }
+      }
+
+      // Ensuite, appliquer le tri principal
       let comparison = 0;
 
       switch (filters.sortBy) {
@@ -49,7 +79,9 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
           comparison = a.title.localeCompare(b.title);
           break;
         case 'authors':
-          comparison = a.authors.localeCompare(b.authors);
+          const lastNameA = getFirstAuthorLastName(a.authors);
+          const lastNameB = getFirstAuthorLastName(b.authors);
+          comparison = lastNameA.localeCompare(lastNameB);
           break;
         case 'date':
         default:

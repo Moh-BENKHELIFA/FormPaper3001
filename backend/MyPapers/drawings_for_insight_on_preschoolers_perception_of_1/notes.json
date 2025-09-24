@@ -1,0 +1,15 @@
+{
+  "paperId": 1,
+  "blocks": [
+    {
+      "id": "test_block_correct_folder",
+      "type": "text",
+      "content": "Test with correct article folder",
+      "order": 0,
+      "createdAt": "2025-09-24T09:00:00.000Z",
+      "updatedAt": "2025-09-24T09:00:00.000Z"
+    }
+  ],
+  "lastModified": "2025-09-24T09:35:55.658Z",
+  "version": "1.0"
+}

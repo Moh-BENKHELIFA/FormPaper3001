@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, FileText } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
-import { notesStorage } from '../services/notesStorage';
+import { fileNotesStorage } from '../services/fileNotesStorage';
 import { Paper } from '../types/Paper';
 import { Block } from '../types/BlockTypes';
+import BlockEditor from './BlockEditor';
 
 interface PaperNotesProps {
   paperId: number;
@@ -36,7 +37,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
 
   const loadNotes = async () => {
     try {
-      const notesData = notesStorage.loadNotes(paperId);
+      const notesData = await fileNotesStorage.loadNotes(paperId);
       setBlocks(notesData);
     } catch (err) {
       console.error('Error loading notes:', err);
@@ -45,11 +46,10 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
     }
   };
 
-  const saveNotes = async () => {
+  const saveNotes = async (blocksToSave: Block[]) => {
     try {
       setIsSaving(true);
-      notesStorage.saveNotes(paperId, blocks);
-      success('Notes sauvegardées');
+      await fileNotesStorage.saveNotes(paperId, blocksToSave);
     } catch (err) {
       error('Erreur', 'Impossible de sauvegarder les notes');
     } finally {
@@ -57,23 +57,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
     }
   };
 
-  const addTextBlock = () => {
-    const newBlock: Block = {
-      id: Date.now().toString(),
-      type: 'text',
-      content: '',
-    };
-    setBlocks([...blocks, newBlock]);
-  };
-
-  const updateBlock = (index: number, updatedBlock: Block) => {
-    const newBlocks = [...blocks];
-    newBlocks[index] = updatedBlock;
-    setBlocks(newBlocks);
-  };
-
-  const deleteBlock = (index: number) => {
-    const newBlocks = blocks.filter((_, i) => i !== index);
+  const handleBlocksChange = (newBlocks: Block[]) => {
     setBlocks(newBlocks);
   };
 
@@ -121,7 +105,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
             </div>
 
             <button
-              onClick={saveNotes}
+              onClick={() => saveNotes(blocks)}
               disabled={isSaving}
               className="btn-primary flex items-center space-x-2"
             >
@@ -132,56 +116,12 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 min-h-96">
-          <div className="p-6">
-            {blocks.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Aucune note
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  Commencez à prendre des notes sur cet article
-                </p>
-                <button
-                  onClick={addTextBlock}
-                  className="btn-primary"
-                >
-                  Ajouter une note
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {blocks.map((block, index) => (
-                  <div key={block.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start space-x-4">
-                      <textarea
-                        value={block.content}
-                        onChange={(e) => updateBlock(index, { ...block, content: e.target.value })}
-                        placeholder="Écrivez votre note ici..."
-                        className="flex-1 border-none outline-none resize-none min-h-[100px]"
-                      />
-                      <button
-                        onClick={() => deleteBlock(index)}
-                        className="text-red-500 hover:text-red-700 p-1"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                <button
-                  onClick={addTextBlock}
-                  className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  + Ajouter une note
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+      <div className="bg-white">
+        <BlockEditor
+          articleId={paperId.toString()}
+          initialBlocks={blocks}
+          onSave={saveNotes}
+        />
       </div>
     </div>
   );

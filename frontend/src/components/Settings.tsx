@@ -18,6 +18,8 @@ const Settings: React.FC = () => {
   const [showEditTagModal, setShowEditTagModal] = useState(false);
   const [showDeleteTagModal, setShowDeleteTagModal] = useState(false);
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
+  const [showResetDatabaseModal, setShowResetDatabaseModal] = useState(false);
+  const [resetConfirmationText, setResetConfirmationText] = useState('');
 
   // Form states
   const [tagName, setTagName] = useState('');
@@ -122,6 +124,33 @@ const Settings: React.FC = () => {
     setShowDeleteTagModal(true);
   };
 
+  const handleResetDatabase = async () => {
+    if (resetConfirmationText !== 'RESET') {
+      error('Erreur', 'Veuillez taper "RESET" pour confirmer');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await paperService.resetDatabase();
+      success('Succès', 'Base de données réinitialisée avec succès');
+      setShowResetDatabaseModal(false);
+      setResetConfirmationText('');
+      // Recharger la page pour refléter les changements
+      window.location.reload();
+    } catch (err) {
+      error('Erreur', 'Impossible de réinitialiser la base de données');
+      console.error('Error resetting database:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openResetDatabaseModal = () => {
+    setResetConfirmationText('');
+    setShowResetDatabaseModal(true);
+  };
+
   const predefinedColors = [
     '#3B82F6', '#EF4444', '#10B981', '#F59E0B',
     '#8B5CF6', '#EC4899', '#6B7280', '#14B8A6',
@@ -183,6 +212,34 @@ const Settings: React.FC = () => {
               <input type="checkbox" className="sr-only peer" defaultChecked />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Zone de Danger</h3>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-red-900">Réinitialiser la base de données</h4>
+                  <p className="text-sm text-red-700 mt-1">
+                    Supprime définitivement tous les articles, catégories, tags et données de la base.
+                    Cette action est irréversible.
+                  </p>
+                </div>
+                <button
+                  onClick={openResetDatabaseModal}
+                  className="ml-4 px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex-shrink-0"
+                >
+                  Réinitialiser
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -520,6 +577,64 @@ const Settings: React.FC = () => {
               className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
             >
               Supprimer
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reset Database Modal */}
+      <Modal
+        isOpen={showResetDatabaseModal}
+        onClose={() => setShowResetDatabaseModal(false)}
+        title="⚠️ Réinitialiser la base de données"
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800 font-medium mb-2">
+              ⚠️ ATTENTION : Cette action est irréversible !
+            </p>
+            <p className="text-red-700 text-sm">
+              Vous êtes sur le point de supprimer définitivement :
+            </p>
+            <ul className="text-red-700 text-sm mt-2 ml-4 space-y-1">
+              <li>• Tous les articles de recherche</li>
+              <li>• Toutes les catégories et tags</li>
+              <li>• Toutes les données associées</li>
+              <li>• Tous les fichiers PDF et images</li>
+            </ul>
+            <p className="text-red-700 text-sm mt-2 font-medium">
+              Cette action ne peut pas être annulée.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Pour confirmer, tapez "RESET" dans le champ ci-dessous :
+            </label>
+            <input
+              type="text"
+              value={resetConfirmationText}
+              onChange={(e) => setResetConfirmationText(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              placeholder="Tapez RESET pour confirmer"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              onClick={() => setShowResetDatabaseModal(false)}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+              disabled={isLoading}
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleResetDatabase}
+              disabled={resetConfirmationText !== 'RESET' || isLoading}
+              className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Réinitialisation...' : 'Réinitialiser définitivement'}
             </button>
           </div>
         </div>

@@ -274,4 +274,18 @@ export const paperService = {
     }
     return response.data.data;
   },
+
+  async resetDatabase(): Promise<void> {
+    try {
+      const response = await api.post<APIResponse<void>>('/database/reset');
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to reset database');
+      }
+    } catch (error) {
+      if (error.response) {
+        throw new Error(error.response.data.error || error.response.data.message || 'Failed to reset database');
+      }
+      throw new Error(error instanceof Error ? error.message : 'Failed to reset database');
+    }
+  },
 };
