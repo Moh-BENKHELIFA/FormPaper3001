@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, FileText, ExternalLink, Eye, BookOpen, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, FileText, ExternalLink, Eye, BookOpen, CheckCircle, Heart } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -148,6 +148,27 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
     }
   };
 
+  const handleFavoriteToggle = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+
+    if (isUpdating || !paper) return;
+
+    try {
+      setIsUpdating(true);
+      const newFavoriteStatus = !paper.is_favorite;
+      await paperService.updateFavoriteStatus(paper.id, newFavoriteStatus);
+
+      // Mise à jour locale immédiate
+      setPaper(prev => prev ? { ...prev, is_favorite: newFavoriteStatus } : null);
+
+      success(newFavoriteStatus ? 'Ajouté aux favoris' : 'Retiré des favoris');
+    } catch (err) {
+      error('Erreur', 'Impossible de mettre à jour les favoris');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const statusOptions = [
     { value: 'unread', label: 'Non lu', icon: BookOpen },
     { value: 'reading', label: 'En cours', icon: Eye },
@@ -198,6 +219,22 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
 
             {/* Actions à droite */}
             <div className="flex items-center space-x-1">
+              {/* Bouton Favoris */}
+              <button
+                onClick={handleFavoriteToggle}
+                className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
+                disabled={isUpdating}
+                title={paper.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+              >
+                <Heart
+                  className={`w-4 h-4 transition-colors ${
+                    paper.is_favorite
+                      ? 'text-red-500 fill-red-500'
+                      : 'text-gray-600'
+                  }`}
+                />
+              </button>
+
               {/* Bouton PDF si disponible */}
               {hasPDF() && (
                 <button
