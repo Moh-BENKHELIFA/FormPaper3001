@@ -196,11 +196,35 @@ class PaperOperations {
   }
 
   static async deletePaper(id) {
+    // D'abord récupérer les informations du papier pour pouvoir supprimer son dossier
+    const paper = await this.getPaper(id);
+    if (!paper) {
+      throw new Error('Paper not found');
+    }
+
+    // Supprimer de la base de données
     const sql = 'DELETE FROM papers WHERE id = ?';
     const result = await db.run(sql, [id]);
 
     if (result.changes === 0) {
       throw new Error('Paper not found');
+    }
+
+    // Supprimer le dossier associé
+    try {
+      const folderName = createFolderName(paper.title, id);
+      const myPapersDir = path.join(__dirname, '../../MyPapers');
+      const paperFolderPath = path.join(myPapersDir, folderName);
+
+      if (await fs.pathExists(paperFolderPath)) {
+        await fs.remove(paperFolderPath);
+        console.log(`✅ Dossier supprimé: ${paperFolderPath}`);
+      } else {
+        console.log(`⚠️ Dossier non trouvé: ${paperFolderPath}`);
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la suppression du dossier:', error);
+      // Ne pas faire échouer la suppression si le dossier ne peut pas être supprimé
     }
 
     return true;
@@ -240,7 +264,7 @@ class PaperOperations {
         SUM(CASE WHEN reading_status = 'unread' THEN 1 ELSE 0 END) as unread,
         SUM(CASE WHEN reading_status = 'reading' THEN 1 ELSE 0 END) as reading,
         SUM(CASE WHEN reading_status = 'read' THEN 1 ELSE 0 END) as read,
-        SUM(CASE WHEN reading_status = 'favorite' THEN 1 ELSE 0 END) as favorite
+        SUM(CASE WHEN is_favorite = 1 THEN 1 ELSE 0 END) as favorite
       FROM papers
     `;
 

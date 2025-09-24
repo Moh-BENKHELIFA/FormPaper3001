@@ -1,0 +1,97 @@
+{
+  "paperId": 5,
+  "blocks": [
+    {
+      "id": "block_1758705920629_v5rmp5tug",
+      "type": "text",
+      "order": 0,
+      "createdAt": "2025-09-24T09:25:20.629Z",
+      "updatedAt": "2025-09-24T09:25:27.225Z",
+      "content": "Bonjour test de la balise 1"
+    },
+    {
+      "id": "block_1758705930256_o005abwei",
+      "type": "h1",
+      "order": 1,
+      "createdAt": "2025-09-24T09:25:30.256Z",
+      "updatedAt": "2025-09-24T09:25:33.703Z",
+      "content": "ça a l'air de bien marché"
+    },
+    {
+      "id": "block_1758705946570_zlpfsone1",
+      "type": "table",
+      "order": 2,
+      "createdAt": "2025-09-24T09:25:46.570Z",
+      "updatedAt": "2025-09-24T09:39:20.391Z",
+      "headers": [
+        "Colonne 1",
+        "Colonne 2"
+      ],
+      "rows": [
+        [
+          "",
+          "onon"
+        ]
+      ]
+    },
+    {
+      "id": "block_1758706695727_kg7hi9hvs",
+      "type": "text",
+      "order": 3,
+      "createdAt": "2025-09-24T09:38:15.727Z",
+      "updatedAt": "2025-09-24T09:39:32.469Z",
+      "content": ""
+    },
+    {
+      "id": "block_1758706727073_wggyqnm56",
+      "type": "image",
+      "order": 4,
+      "createdAt": "2025-09-24T09:38:47.074Z",
+      "updatedAt": "2025-09-24T09:39:05.764Z",
+      "url": "http://localhost:5004/api/image/5/c927c1ba-1771-4f6a-9c20-6eca7e4cd428.png",
+      "alt": "Image",
+      "caption": "",
+      "width": 30
+    },
+    {
+      "id": "block_1758706727073_w15gj9jbd",
+      "type": "text",
+      "order": 5,
+      "createdAt": "2025-09-24T09:38:47.073Z",
+      "updatedAt": "2025-09-24T09:38:47.073Z",
+      "content": ""
+    },
+    {
+      "id": "block_1758706665234_t4afzzjf6",
+      "type": "image",
+      "order": 6,
+      "createdAt": "2025-09-24T09:37:45.234Z",
+      "updatedAt": "2025-09-24T09:37:45.234Z",
+      "url": "http://localhost:5004/api/image/5/f551991a-7e19-4222-b5e3-74eb9f527b3a.png",
+      "alt": "Image collée",
+      "caption": "",
+      "width": 100
+    },
+    {
+      "id": "block_1758706675073_iqqp7n0zy",
+      "type": "image",
+      "order": 7,
+      "createdAt": "2025-09-24T09:37:55.073Z",
+      "updatedAt": "2025-09-24T18:24:57.927Z",
+      "url": "http://localhost:5004/api/image/5/ee440874-1abf-4269-9c12-4367b39293e2.png",
+      "alt": "Image collée",
+      "caption": "",
+      "width": 79
+    },
+    {
+      "id": "block_1758738290192_b7t1wcdr0",
+      "type": "text",
+      "order": 8,
+      "createdAt": "2025-09-24T18:24:50.192Z",
+      "updatedAt": "2025-09-24T18:24:50.192Z",
+      "content": ""
+    }
+  ],
+  "lastModified": "2025-09-24T21:14:54.964Z",
+  "version": "1.0"
+}

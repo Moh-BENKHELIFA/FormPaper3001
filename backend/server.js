@@ -6,8 +6,10 @@ const fs = require('fs-extra');
 const { spawn } = require('child_process');
 
 const database = require('./src/database');
-const notesRoutes = require('./src/routes/notesRoutes');
+// const notesRoutes = require('./src/routes/notesRoutes');
 const tagsRoutes = require('./src/routes/tagsRoutes');
+const imageUploadRoutes = require('./routes/imageUpload');
+const notesStorageRoutes = require('./routes/notesStorage');
 
 const app = express();
 const PORT = process.env.PORT || 5003;
@@ -306,8 +308,10 @@ app.post('/api/categories', async (req, res) => {
   }
 });
 
-app.use('/api/notes', notesRoutes);
+// app.use('/api/notes', notesRoutes);
 app.use('/api/tags', tagsRoutes);
+app.use('/api', imageUploadRoutes);
+app.use('/api', notesStorageRoutes);
 
 // Route pour uploader l'image de couverture d'un article
 app.post('/api/papers/:id/cover-image', imageUpload.single('coverImage'), async (req, res) => {
@@ -442,11 +446,17 @@ app.post('/api/papers/:id/save-pdf-assets', async (req, res) => {
     try {
       if (await fs.pathExists(pdfPath)) {
         await fs.remove(pdfPath);
+        console.log(`✅ Fichier PDF temporaire supprimé: ${pdfPath}`);
       }
       for (const imagePath of selectedImages || []) {
         if (await fs.pathExists(imagePath)) {
           await fs.remove(imagePath);
+          console.log(`✅ Image temporaire supprimée: ${imagePath}`);
         }
+      }
+      if (coverImagePath && await fs.pathExists(coverImagePath)) {
+        await fs.remove(coverImagePath);
+        console.log(`✅ Image de couverture temporaire supprimée: ${coverImagePath}`);
       }
     } catch (cleanupError) {
       console.warn('Warning: Could not clean up temporary files:', cleanupError);
@@ -464,6 +474,85 @@ app.post('/api/papers/:id/save-pdf-assets', async (req, res) => {
   } catch (error) {
     console.error('Error saving PDF assets:', error);
     res.status(500).json({ success: false, error: 'Failed to save PDF assets' });
+  }
+});
+
+// Find existing article directory
+async function findArticleDir(articleId) {
+  const myPapersDir = path.join(__dirname, 'MyPapers');
+
+  try {
+    const items = await fs.readdir(myPapersDir);
+
+    // Look for directory that ends with _articleId
+    const articleDirName = items.find(item => {
+      const itemPath = path.join(myPapersDir, item);
+      try {
+        const stat = fs.statSync(itemPath);
+        return stat.isDirectory() && item.endsWith(`_${articleId}`);
+      } catch (error) {
+        return false;
+      }
+    });
+
+    if (articleDirName) {
+      return path.join(myPapersDir, articleDirName);
+    } else {
+      // Fallback: use directory with just the ID if exists
+      const fallbackDir = path.join(myPapersDir, articleId.toString());
+      try {
+        const stat = fs.statSync(fallbackDir);
+        if (stat.isDirectory()) {
+          return fallbackDir;
+        }
+      } catch (error) {
+        // Directory doesn't exist
+      }
+      return null;
+    }
+  } catch (error) {
+    return null;
+  }
+}
+
+// Serve PDF files from article directories
+app.get('/api/papers/:id/pdf', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find the article directory
+    const articleDir = await findArticleDir(id);
+    if (!articleDir) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    // Look for PDF file in the article directory
+    const files = await fs.readdir(articleDir);
+    const pdfFile = files.find(file => file.endsWith('.pdf') && file.includes(`_${id}.pdf`));
+
+    if (!pdfFile) {
+      return res.status(404).json({ error: 'PDF not found' });
+    }
+
+    const pdfPath = path.join(articleDir, pdfFile);
+
+    // Check if file exists
+    try {
+      await fs.access(pdfPath);
+    } catch (error) {
+      return res.status(404).json({ error: 'PDF file not accessible' });
+    }
+
+    // Set appropriate headers for PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline'); // Open in browser instead of download
+
+    // Send the PDF file
+    res.sendFile(path.resolve(pdfPath));
+
+  } catch (error) {
+    console.error('Error serving PDF:', error);
+    res.status(500).json({ error: 'Failed to serve PDF' });
   }
 });
 
@@ -583,6 +672,18 @@ async function extractImagesFromPDF(filePath) {
     });
   });
 }
+
+// Reset database endpoint
+app.post('/api/database/reset', async (req, res) => {
+  try {
+    console.log('⚠️ Database reset requested');
+    await database.resetDatabase();
+    res.json({ success: true, message: 'Base de données réinitialisée avec succès' });
+  } catch (error) {
+    console.error('Error resetting database:', error);
+    res.status(500).json({ success: false, error: 'Erreur lors de la réinitialisation de la base de données' });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`✅ FormPaper3001 Server running on port ${PORT}`);

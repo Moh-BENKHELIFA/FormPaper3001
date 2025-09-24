@@ -98,6 +98,40 @@ async function deleteDescription(id) {
   return await DescriptionOperations.deleteDescription(id);
 }
 
+async function resetDatabase() {
+  const fs = require('fs-extra');
+  const path = require('path');
+
+  try {
+    // Supprimer toutes les données
+    await db.run('DELETE FROM paper_categories');
+    await db.run('DELETE FROM descriptions');
+    await db.run('DELETE FROM papers');
+    await db.run('DELETE FROM categories');
+    await db.run('DELETE FROM tags');
+    await db.run('DELETE FROM paper_tags');
+
+    // Reset des auto-increment (compteurs d'ID)
+    await db.run('UPDATE sqlite_sequence SET seq = 0 WHERE name = "papers"');
+    await db.run('UPDATE sqlite_sequence SET seq = 0 WHERE name = "categories"');
+    await db.run('UPDATE sqlite_sequence SET seq = 0 WHERE name = "tags"');
+    await db.run('UPDATE sqlite_sequence SET seq = 0 WHERE name = "descriptions"');
+
+    // Supprimer le dossier MyPapers et tout son contenu
+    const myPapersDir = path.join(__dirname, '../../MyPapers');
+    if (await fs.pathExists(myPapersDir)) {
+      await fs.remove(myPapersDir);
+      console.log('✅ Dossier MyPapers supprimé');
+    }
+
+    console.log('✅ Base de données et fichiers réinitialisés');
+    return true;
+  } catch (error) {
+    console.error('❌ Erreur lors de la réinitialisation:', error);
+    throw error;
+  }
+}
+
 initializeConnection().catch(console.error);
 
 module.exports = {
@@ -123,5 +157,6 @@ module.exports = {
   getDescription,
   getDescriptionByPaper,
   updateDescription,
-  deleteDescription
+  deleteDescription,
+  resetDatabase
 };

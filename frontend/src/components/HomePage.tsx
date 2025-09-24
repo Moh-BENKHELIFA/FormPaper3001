@@ -71,6 +71,7 @@ const HomePage: React.FC = () => {
           papers={filteredPapers}
           isLoading={isLoading}
           onPapersChange={handlePapersChange}
+          onStatsUpdate={loadStats}
         />
       </div>
     </div>

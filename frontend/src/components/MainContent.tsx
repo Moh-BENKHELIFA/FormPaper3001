@@ -8,12 +8,14 @@ interface MainContentProps {
   papers: Paper[];
   isLoading: boolean;
   onPapersChange: () => void;
+  onStatsUpdate?: () => void;
 }
 
 const MainContent: React.FC<MainContentProps> = ({
   papers,
   isLoading,
-  onPapersChange
+  onPapersChange,
+  onStatsUpdate
 }) => {
   const { viewMode } = useNavigation();
 
@@ -53,6 +55,7 @@ const MainContent: React.FC<MainContentProps> = ({
           key={paper.id}
           paper={paper}
           onStatusChange={onPapersChange}
+          onStatsUpdate={onStatsUpdate}
         />
       ))}
     </div>

@@ -82,6 +82,8 @@ export interface PaperFilters {
   search: string;
   status: string;
   category: string;
+  showFavorites: boolean;
+  sortFavorites: boolean;
   sortBy: 'date' | 'title' | 'authors';
   sortOrder: 'asc' | 'desc';
 }
