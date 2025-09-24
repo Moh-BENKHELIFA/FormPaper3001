@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Heart, BookOpen, CheckCircle, Tag as TagIcon, Trash2, FileText, ExternalLink } from 'lucide-react';
+import { Eye, Heart, BookOpen, CheckCircle, Tag as TagIcon, Trash2 } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -180,18 +180,6 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onStatsUpd
     return null;
   };
 
-  const formatPublicationDate = () => {
-    if (localPaper.publication_date) {
-      const date = new Date(localPaper.publication_date);
-      return date.toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      });
-    }
-    return formatDate();
-  };
-
   const formatCreationDate = () => {
     const date = new Date(localPaper.created_at);
     return date.toLocaleDateString('fr-FR', {
@@ -199,19 +187,6 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onStatsUpd
       month: 'short',
       year: 'numeric'
     });
-  };
-
-  const handlePDFOpen = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (localPaper.folder_path) {
-      // Construire l'URL du PDF basé sur le folder_path
-      const pdfUrl = `/api/papers/${localPaper.id}/pdf`;
-      window.open(pdfUrl, '_blank');
-    }
-  };
-
-  const hasPDF = () => {
-    return localPaper.folder_path !== null && localPaper.folder_path !== '';
   };
 
   const statusOptions = [
@@ -287,131 +262,87 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onStatsUpd
 
   return (
     <div
-      className="card cursor-pointer transform transition-transform hover:scale-105 flex flex-col h-full relative overflow-hidden"
+      className="card cursor-pointer transform transition-transform hover:scale-105 flex flex-col h-full"
       onClick={handleCardClick}
       onDoubleClick={handleCardDoubleClick}
       onMouseDown={handleCardMouseDown}
     >
-      {/* Bandeau avec image de couverture en arrière-plan */}
-      <div
-        className="relative h-48 flex flex-col justify-between p-4 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 100%), url(${localPaper.image ? `/api/${localPaper.image}` : '/api/default-image'})`
-        }}
-      >
-        {/* Header du bandeau - Actions en haut */}
-        <div className="flex justify-between items-start">
-          {/* Actions à gauche */}
-          <div className="flex items-center space-x-2">
-            {/* Bouton PDF si disponible */}
-            {hasPDF() && (
-              <button
-                onClick={handlePDFOpen}
-                className="p-2 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
-                disabled={isUpdating}
-                title="Ouvrir le PDF"
-              >
-                <FileText className="w-4 h-4 text-blue-600" />
-              </button>
-            )}
-
-            {/* Lien DOI si disponible */}
-            {localPaper.doi && (
-              <a
-                href={`https://doi.org/${localPaper.doi}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
-                onClick={(e) => e.stopPropagation()}
-                title={`DOI: ${localPaper.doi}`}
-              >
-                <ExternalLink className="w-4 h-4 text-green-600" />
-              </a>
-            )}
+      {/* Image de couverture */}
+      <div className="relative h-48 bg-gray-200 overflow-hidden rounded-t-lg">
+        {localPaper.image ? (
+          <img
+            src={`/api/${localPaper.image}`}
+            alt={localPaper.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center">
+            <BookOpen className="w-16 h-16 text-gray-400" />
           </div>
+        )}
 
-          {/* Actions à droite */}
-          <div className="flex items-center space-x-2">
-            {/* Bouton coeur favori */}
-            <button
-              onClick={handleFavoriteToggle}
-              className="p-2 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
-              disabled={isUpdating}
-              title={localPaper.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-            >
-              <Heart
-                className={`w-4 h-4 transition-colors ${
-                  localPaper.is_favorite
-                    ? 'text-red-500 fill-red-500'
-                    : 'text-gray-600'
-                }`}
-              />
-            </button>
-
-            {/* Bouton supprimer */}
-            <button
-              onClick={handleDeletePaper}
-              className="p-2 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
-              disabled={isUpdating}
-              title="Supprimer l'article"
-            >
-              <Trash2 className="w-4 h-4 text-red-600" />
-            </button>
-          </div>
+        {/* Actions en overlay */}
+        <div className="absolute top-2 right-2 flex space-x-2">
+          <button
+            onClick={handleFavoriteToggle}
+            className="p-2 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-colors shadow-sm"
+            disabled={isUpdating}
+            title={localPaper.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+          >
+            <Heart
+              className={`w-4 h-4 transition-colors ${
+                localPaper.is_favorite
+                  ? 'text-red-500 fill-red-500'
+                  : 'text-gray-600'
+              }`}
+            />
+          </button>
+          <button
+            onClick={handleDeletePaper}
+            className="p-2 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-colors shadow-sm"
+            disabled={isUpdating}
+            title="Supprimer l'article"
+          >
+            <Trash2 className="w-4 h-4 text-red-600" />
+          </button>
         </div>
 
-        {/* Informations du bandeau - en bas */}
-        <div className="text-white">
-          {/* Titre */}
-          <h3 className="font-semibold text-lg line-clamp-2 mb-2 drop-shadow-lg">
-            {localPaper.title}
-          </h3>
-
-          {/* Informations détaillées */}
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="space-y-1">
-              <div className="flex items-center space-x-2">
-                <div
-                  className="w-3 h-3 rounded-full border-2 border-white"
-                  style={{ backgroundColor: getStatusColor(localPaper.reading_status) }}
-                ></div>
-                <span className="drop-shadow">
-                  {statusOptions.find(opt => opt.value === localPaper.reading_status)?.label}
-                </span>
-              </div>
-
-              {formatPublicationDate() && (
-                <div className="text-xs text-white text-opacity-90 drop-shadow">
-                  Publié: {formatPublicationDate()}
-                </div>
-              )}
-            </div>
-
-            <div className="text-right space-y-1">
-              <div className="text-xs text-white text-opacity-90 drop-shadow">
-                Ajouté: {formatCreationDate()}
-              </div>
-
-              {localPaper.doi && (
-                <div className="text-xs text-white text-opacity-80 drop-shadow truncate">
-                  DOI: {localPaper.doi}
-                </div>
-              )}
-            </div>
+        {/* Indicateur de statut en bas à gauche */}
+        <div className="absolute bottom-2 left-2">
+          <div
+            className="flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium shadow-sm"
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              color: getStatusColor(localPaper.reading_status)
+            }}
+          >
+            {getStatusIcon(localPaper.reading_status)}
+            <span>{statusOptions.find(opt => opt.value === localPaper.reading_status)?.label}</span>
           </div>
         </div>
       </div>
 
       {/* Contenu de la carte */}
-      <div className="flex flex-col h-full p-4 space-y-3 bg-white">
-        {/* Auteurs et conférence */}
-        <div className="flex-grow">
-          <p className="text-sm text-gray-700 line-clamp-1 mb-1 font-medium">
-            {localPaper.authors}
-          </p>
-          <p className="text-xs text-gray-500 line-clamp-1">
-            {localPaper.conference}
-          </p>
+      <div className="flex flex-col flex-grow p-4 space-y-3">
+        {/* Titre */}
+        <h3 className="font-semibold text-lg line-clamp-2 flex-grow">
+          {localPaper.title}
+        </h3>
+
+        {/* Auteurs */}
+        <p className="text-sm text-gray-700 line-clamp-2">
+          {localPaper.authors}
+        </p>
+
+        {/* Conférence/Journal */}
+        <p className="text-xs text-gray-500 line-clamp-1">
+          {localPaper.conference}
+        </p>
+
+        {/* Informations supplémentaires */}
+        <div className="flex justify-between items-center text-xs text-gray-500">
+          <span>{formatDate()}</span>
+          <span>Ajouté le {formatCreationDate()}</span>
         </div>
 
         {/* Tags Section */}
