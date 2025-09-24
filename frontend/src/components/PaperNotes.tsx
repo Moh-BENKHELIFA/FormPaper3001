@@ -276,7 +276,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
           </div>
 
           {/* Colonne de droite - Actions sur 3 lignes */}
-          <div className="flex flex-col justify-between flex-shrink-0 min-w-0" style={{ paddingTop: '8px', paddingBottom: '4px' }}>
+          <div className="flex flex-col justify-start flex-shrink-0 min-w-0">
             {/* Ligne 1 - Boutons Favoris, PDF, DOI */}
             <div className="flex items-center justify-end space-x-1">
               {/* Bouton Favoris */}
