@@ -201,24 +201,84 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
       {/* Header avec image de couverture en background */}
       <div className="sticky top-0 z-10">
         <div
-          className="relative flex flex-col justify-between bg-cover bg-center bg-no-repeat overflow-hidden"
+          className="relative bg-cover bg-center bg-no-repeat overflow-hidden px-2 py-2 flex"
           style={{
             height: '90px',
             backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 100%), url(${paper.image ? `/api/${paper.image}` : '/api/default-image'})`
           }}
         >
-          {/* Header supérieur - Navigation et actions */}
-          <div className="flex justify-between items-center p-2">
-            {/* Navigation à gauche */}
-            <button
-              onClick={goToHome}
-              className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
-            >
-              <ArrowLeft className="w-4 h-4 text-gray-600" />
-            </button>
+          {/* Colonne de gauche - Navigation et contenu principal */}
+          <div className="flex-1 flex flex-col">
+            {/* Première ligne - Navigation et titre */}
+            <div className="flex items-start mb-1">
+              {/* Navigation à gauche */}
+              <button
+                onClick={goToHome}
+                className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm flex-shrink-0"
+              >
+                <ArrowLeft className="w-4 h-4 text-gray-600" />
+              </button>
 
-            {/* Actions à droite */}
-            <div className="flex items-center space-x-1">
+              {/* Titre */}
+              <div className="flex-1 text-white px-3 min-w-0">
+                <h1 className="font-bold line-clamp-1 drop-shadow-lg" style={{ fontSize: '1.3rem' }}>
+                  {paper.title}
+                </h1>
+              </div>
+            </div>
+
+            {/* Deuxième ligne - Auteurs */}
+            <div className="text-white px-3 mb-1" style={{ marginLeft: '52px' }}>
+              <p className="text-xs text-white text-opacity-90 drop-shadow line-clamp-1">
+                {paper.authors}
+              </p>
+            </div>
+
+            {/* Troisième ligne - Informations */}
+            <div className="text-white px-3" style={{ marginLeft: '52px' }}>
+              <div className="flex items-center text-xs text-white text-opacity-80 flex-wrap">
+                {/* Date de publication */}
+                {formatPublicationDate() && (
+                  <span className="drop-shadow whitespace-nowrap mr-2">{formatPublicationDate()}</span>
+                )}
+
+                {/* Conférence */}
+                {paper.conference && formatPublicationDate() && (
+                  <span className="drop-shadow mr-2">•</span>
+                )}
+                {paper.conference && (
+                  <span className="drop-shadow mr-2" style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: 'calc(100vw - 250px)'
+                  }}>
+                    {paper.conference}
+                  </span>
+                )}
+
+                {/* DOI */}
+                {paper.doi && (
+                  <>
+                    <span className="drop-shadow mr-2">•</span>
+                    <span className="drop-shadow" style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: 'calc(100vw - 350px)'
+                    }}>
+                      {paper.doi}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Colonne de droite - Actions sur 3 lignes */}
+          <div className="flex flex-col justify-between flex-shrink-0 py-1 min-w-0">
+            {/* Ligne 1 - Boutons Favoris, PDF, DOI */}
+            <div className="flex items-center justify-end space-x-1">
               {/* Bouton Favoris */}
               <button
                 onClick={handleFavoriteToggle}
@@ -259,50 +319,10 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
                 </a>
               )}
             </div>
-          </div>
 
-          {/* Contenu principal */}
-          <div className="flex-1 text-white px-3 pb-2 min-w-0">
-            {/* Titre */}
-            <h1 className="font-bold text-sm line-clamp-1 drop-shadow-lg mb-1">
-              {paper.title}
-            </h1>
-
-            {/* Auteurs */}
-            <p className="text-xs text-white text-opacity-90 drop-shadow line-clamp-1 mb-1">
-              {paper.authors}
-            </p>
-
-            {/* Informations en ligne */}
-            <div className="flex items-center justify-between text-xs text-white text-opacity-80">
-              <div className="flex items-center space-x-2">
-                {/* Date de publication */}
-                {formatPublicationDate() && (
-                  <span className="drop-shadow">{formatPublicationDate()}</span>
-                )}
-
-                {/* Conférence */}
-                {paper.conference && formatPublicationDate() && (
-                  <span className="drop-shadow">•</span>
-                )}
-                {paper.conference && (
-                  <span className="drop-shadow line-clamp-1 max-w-32">{paper.conference}</span>
-                )}
-
-                {/* DOI */}
-                {paper.doi && (
-                  <>
-                    <span className="drop-shadow">•</span>
-                    <span className="drop-shadow line-clamp-1 max-w-24">{paper.doi}</span>
-                  </>
-                )}
-
-                {/* Date d'ajout */}
-                <span className="drop-shadow">• Ajouté: {formatCreationDate()}</span>
-              </div>
-
-              {/* Statut de lecture cliquable */}
-              <div className="flex items-center space-x-1">
+            {/* Ligne 2 - Boutons de statut de lecture */}
+            <div className="flex items-center justify-end">
+              <div className="flex items-center space-x-1 bg-black bg-opacity-30 rounded-full px-1.5 py-0.5">
                 {statusOptions.map((status) => (
                   <button
                     key={status.value}
@@ -310,13 +330,13 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
                     disabled={isUpdating}
                     className={`p-1 rounded-full transition-all duration-200 ${
                       paper.reading_status === status.value
-                        ? 'bg-white bg-opacity-20 scale-105'
-                        : 'hover:bg-white hover:bg-opacity-10 opacity-60 hover:opacity-100'
+                        ? 'bg-white bg-opacity-90 scale-105'
+                        : 'bg-white bg-opacity-20 hover:bg-opacity-40 opacity-70 hover:opacity-100'
                     }`}
                     title={status.label}
                   >
                     {React.createElement(status.icon, {
-                      className: `w-3 h-3 text-white drop-shadow`,
+                      className: `w-3 h-3 transition-colors`,
                       style: {
                         color: paper.reading_status === status.value
                           ? getStatusColor(status.value)
@@ -325,6 +345,13 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
                     })}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Ligne 3 - Date d'ajout */}
+            <div className="flex items-center justify-end">
+              <div className="text-xs text-white text-opacity-80 drop-shadow whitespace-nowrap">
+                Ajouté: {formatCreationDate()}
               </div>
             </div>
           </div>
