@@ -288,4 +288,9 @@ export const paperService = {
       throw new Error(error instanceof Error ? error.message : 'Failed to reset database');
     }
   },
+
+  async getPaperSavedImages(paperId: number): Promise<{ images: Array<{ filename: string; url: string; path: string }>; total: number }> {
+    const response = await api.get<APIResponse<{ images: Array<{ filename: string; url: string; path: string }>; total: number }>>(`/papers/${paperId}/saved-images`);
+    return response.data.data || { images: [], total: 0 };
+  },
 };

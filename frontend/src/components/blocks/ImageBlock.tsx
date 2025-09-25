@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Image as ImageIcon, X, ExternalLink } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, ExternalLink, Grid3x3 } from 'lucide-react';
 import { ImageBlockData } from '../../types/BlockTypes';
 import { blockFactory } from '../../utils/blockFactory';
 import { imageService } from '../../services/imageService';
+import { paperService } from '../../services/paperService';
 
 interface ImageBlockProps {
   block: ImageBlockData;
@@ -29,6 +30,9 @@ const ImageBlock: React.FC<ImageBlockProps> = ({
   const [width, setWidth] = useState(block.width || 100);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSavedImages, setShowSavedImages] = useState(false);
+  const [savedImages, setSavedImages] = useState<Array<{ filename: string; url: string; path: string }>>([]);
+  const [loadingSavedImages, setLoadingSavedImages] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
@@ -116,6 +120,32 @@ const ImageBlock: React.FC<ImageBlockProps> = ({
     setError('Impossible de charger l\'image');
   };
 
+  const loadSavedImages = async () => {
+    if (!articleId) return;
+
+    setLoadingSavedImages(true);
+    try {
+      const result = await paperService.getPaperSavedImages(parseInt(articleId));
+      setSavedImages(result.images);
+      setShowSavedImages(true);
+    } catch (error) {
+      console.error('Erreur lors du chargement des images:', error);
+      setError('Impossible de charger les images sauvegardées');
+    } finally {
+      setLoadingSavedImages(false);
+    }
+  };
+
+  const handleSavedImageSelect = (imageUrl: string) => {
+    setUrl(imageUrl);
+    updateBlock({
+      url: imageUrl,
+      alt: 'Image du PDF',
+      caption: ''
+    });
+    setShowSavedImages(false);
+  };
+
   if (!url) {
     return (
       <div className="w-full">
@@ -139,7 +169,7 @@ const ImageBlock: React.FC<ImageBlockProps> = ({
 
                 <div className="text-gray-500 text-sm">ou</div>
 
-                <div>
+                <div className="flex space-x-2">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -155,6 +185,17 @@ const ImageBlock: React.FC<ImageBlockProps> = ({
                     <Upload className="w-4 h-4 mr-2" />
                     {isLoading ? 'Upload en cours...' : 'Upload une image'}
                   </button>
+
+                  {articleId && (
+                    <button
+                      onClick={loadSavedImages}
+                      disabled={loadingSavedImages}
+                      className="inline-flex items-center px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                      <Grid3x3 className="w-4 h-4 mr-2" />
+                      {loadingSavedImages ? 'Chargement...' : 'Images du PDF'}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -164,6 +205,46 @@ const ImageBlock: React.FC<ImageBlockProps> = ({
             </>
           )}
         </div>
+
+        {/* Galerie des images sauvegardées */}
+        {showSavedImages && (
+          <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+            <div className="flex justify-between items-center mb-3">
+              <h4 className="text-sm font-medium text-gray-700">Images extraites du PDF</h4>
+              <button
+                onClick={() => setShowSavedImages(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {savedImages.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">Aucune image sauvegardée pour cet article.</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+                {savedImages.map((image, index) => (
+                  <div
+                    key={index}
+                    className="relative group cursor-pointer border border-gray-200 rounded-md overflow-hidden hover:border-blue-500 transition-colors"
+                    onClick={() => handleSavedImageSelect(image.url)}
+                  >
+                    <img
+                      src={image.url}
+                      alt={image.filename}
+                      className="w-full h-20 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+                      <div className="text-white text-xs bg-black bg-opacity-50 px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        Sélectionner
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }

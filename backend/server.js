@@ -673,6 +673,57 @@ async function extractImagesFromPDF(filePath) {
   });
 }
 
+// Get saved images for a paper
+app.get('/api/papers/:id/saved-images', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find the article directory
+    const articleDir = await findArticleDir(id);
+    if (!articleDir) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    const savedImagesDir = path.join(articleDir, 'saved_images');
+
+    // Check if saved_images directory exists
+    if (!await fs.pathExists(savedImagesDir)) {
+      return res.json({ success: true, data: { images: [], total: 0 } });
+    }
+
+    // Get all image files from saved_images directory
+    const files = await fs.readdir(savedImagesDir);
+    const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'];
+
+    const imageFiles = files.filter(file => {
+      const ext = path.extname(file).toLowerCase();
+      return imageExtensions.includes(ext);
+    });
+
+    // Generate web paths for the images
+    const imageData = imageFiles.map(filename => {
+      const webPath = `/api/MyPapers/${path.basename(articleDir)}/saved_images/${filename}`;
+      return {
+        filename,
+        url: webPath,
+        path: path.join(savedImagesDir, filename)
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        images: imageData,
+        total: imageData.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting saved images:', error);
+    res.status(500).json({ error: 'Failed to get saved images' });
+  }
+});
+
 // Reset database endpoint
 app.post('/api/database/reset', async (req, res) => {
   try {
