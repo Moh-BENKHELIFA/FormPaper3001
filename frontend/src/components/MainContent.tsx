@@ -8,6 +8,7 @@ interface MainContentProps {
   papers: Paper[];
   isLoading: boolean;
   onPapersChange: () => void;
+  onPaperUpdate?: (paper: Paper) => void;
   onStatsUpdate?: () => void;
 }
 
@@ -15,6 +16,7 @@ const MainContent: React.FC<MainContentProps> = ({
   papers,
   isLoading,
   onPapersChange,
+  onPaperUpdate,
   onStatsUpdate
 }) => {
   const { viewMode } = useNavigation();
@@ -54,7 +56,8 @@ const MainContent: React.FC<MainContentProps> = ({
         <PaperCard
           key={paper.id}
           paper={paper}
-          onStatusChange={onPapersChange}
+          onStatusChange={onPaperUpdate ? () => {} : onPapersChange}
+          onPaperUpdate={onPaperUpdate}
           onStatsUpdate={onStatsUpdate}
         />
       ))}

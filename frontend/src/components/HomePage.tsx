@@ -53,6 +53,20 @@ const HomePage: React.FC = () => {
     loadStats();
   };
 
+  const handlePaperUpdate = (updatedPaper: Paper) => {
+    setPapers(prevPapers =>
+      prevPapers.map(paper =>
+        paper.id === updatedPaper.id ? updatedPaper : paper
+      )
+    );
+    setFilteredPapers(prevFiltered =>
+      prevFiltered.map(paper =>
+        paper.id === updatedPaper.id ? updatedPaper : paper
+      )
+    );
+    loadStats(); // On recharge seulement les stats
+  };
+
   const handleFilterChange = (filtered: Paper[]) => {
     setFilteredPapers(filtered);
   };
@@ -71,6 +85,7 @@ const HomePage: React.FC = () => {
           papers={filteredPapers}
           isLoading={isLoading}
           onPapersChange={handlePapersChange}
+          onPaperUpdate={handlePaperUpdate}
           onStatsUpdate={loadStats}
         />
       </div>

@@ -8,10 +8,11 @@ import { Paper, Tag } from '../types/Paper';
 interface PaperCardProps {
   paper: Paper;
   onStatusChange?: () => void;
+  onPaperUpdate?: (paper: Paper) => void;
   onStatsUpdate?: () => void;
 }
 
-const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onStatsUpdate }) => {
+const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpdate, onStatsUpdate }) => {
   const { goToNotes } = useNavigation();
   const { success, error } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -77,10 +78,15 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onStatsUpd
       await paperService.updateReadingStatus(localPaper.id, newStatus);
 
       // Mise à jour locale immédiate pour éviter le clignotement
-      setLocalPaper(prev => ({ ...prev, reading_status: newStatus }));
+      const updatedPaper = { ...localPaper, reading_status: newStatus };
+      setLocalPaper(updatedPaper);
 
-      // Notification du parent pour recharger les données
-      onStatusChange?.();
+      // Notification du parent avec le paper mis à jour
+      if (onPaperUpdate) {
+        onPaperUpdate(updatedPaper);
+      } else {
+        onStatusChange?.();
+      }
       onStatsUpdate?.();
     } catch (err) {
       error('Erreur', 'Impossible de mettre à jour le statut');
@@ -102,12 +108,17 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onStatsUpd
       await paperService.updateFavoriteStatus(localPaper.id, newFavoriteStatus);
 
       // Mise à jour locale immédiate pour éviter le clignotement
-      setLocalPaper(prev => ({ ...prev, is_favorite: newFavoriteStatus }));
+      const updatedPaper = { ...localPaper, is_favorite: newFavoriteStatus };
+      setLocalPaper(updatedPaper);
 
       success(newFavoriteStatus ? 'Ajouté aux favoris' : 'Retiré des favoris');
 
-      // Notification du parent pour recharger les données
-      onStatusChange?.();
+      // Notification du parent avec le paper mis à jour
+      if (onPaperUpdate) {
+        onPaperUpdate(updatedPaper);
+      } else {
+        onStatusChange?.();
+      }
       onStatsUpdate?.();
     } catch (err) {
       error('Erreur', 'Impossible de mettre à jour les favoris');
