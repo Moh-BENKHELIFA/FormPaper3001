@@ -38,6 +38,9 @@ const SplitView: React.FC<SplitViewProps> = ({
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!isDragging || !containerRef.current) return;
 
+    event.preventDefault();
+    event.stopPropagation();
+
     const containerRect = containerRef.current.getBoundingClientRect();
     const containerWidth = containerRect.width;
     const deltaX = event.clientX - startXRef.current;
@@ -56,22 +59,39 @@ const SplitView: React.FC<SplitViewProps> = ({
     onSplitChange?.(newSplit);
   }, [isDragging, minLeftWidth, minRightWidth, onSplitChange]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((event?: MouseEvent) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     setIsDragging(false);
   }, []);
 
   useEffect(() => {
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      const handleMouseMoveGlobal = (e: MouseEvent) => handleMouseMove(e);
+      const handleMouseUpGlobal = (e: MouseEvent) => handleMouseUp(e);
+
+      // Ajouter les écouteurs avec options pour une meilleure performance
+      document.addEventListener('mousemove', handleMouseMoveGlobal, { passive: false });
+      document.addEventListener('mouseup', handleMouseUpGlobal, { passive: false });
+
+      // Ajouter des écouteurs pour les cas où la souris sort de la fenêtre
+      document.addEventListener('mouseleave', handleMouseUpGlobal);
+      window.addEventListener('blur', handleMouseUpGlobal);
+
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
+      document.body.style.pointerEvents = 'none';
 
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('mousemove', handleMouseMoveGlobal);
+        document.removeEventListener('mouseup', handleMouseUpGlobal);
+        document.removeEventListener('mouseleave', handleMouseUpGlobal);
+        window.removeEventListener('blur', handleMouseUpGlobal);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
+        document.body.style.pointerEvents = '';
       };
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
@@ -91,18 +111,28 @@ const SplitView: React.FC<SplitViewProps> = ({
 
       {/* Resizer */}
       <div
-        className="flex-shrink-0 w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize relative group transition-colors duration-150"
+        className={`flex-shrink-0 w-1 relative group transition-colors duration-150 ${
+          isDragging
+            ? 'bg-blue-500'
+            : 'bg-gray-300 hover:bg-gray-400'
+        } cursor-col-resize`}
         onMouseDown={handleMouseDown}
+        style={{ pointerEvents: 'all' }}
       >
         {/* Visual indicator */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-gray-500 rounded-full p-1">
+          <div className={`transition-opacity duration-150 bg-gray-500 rounded-full p-1 ${
+            isDragging || 'opacity-0 group-hover:opacity-100'
+          }`}>
             <GripVertical className="w-3 h-3 text-white" />
           </div>
         </div>
 
         {/* Expanded hit area */}
-        <div className="absolute inset-y-0 -left-2 -right-2" />
+        <div
+          className="absolute inset-y-0 -left-3 -right-3 cursor-col-resize"
+          style={{ pointerEvents: 'all' }}
+        />
       </div>
 
       {/* Right Panel */}

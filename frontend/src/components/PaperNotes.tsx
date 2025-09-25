@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, FileText, Globe, Eye, BookOpen, CheckCircle, Heart, X } from 'lucide-react';
+import { ArrowLeft, Save, FileText, Globe, Eye, BookOpen, CheckCircle, Heart, X, Columns2, PanelRightOpen } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -118,6 +118,13 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
       case 'reading': return '#F59E0B'; // yellow-500
       case 'read': return '#10B981'; // green-500
       default: return '#6B7280'; // gray-500
+    }
+  };
+
+  const handlePDFOpen = () => {
+    if (paper?.folder_path) {
+      const pdfUrl = `/api/papers/${paper.id}/pdf`;
+      window.open(pdfUrl, '_blank');
     }
   };
 
@@ -313,19 +320,11 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
               {/* Bouton PDF si disponible */}
               {hasPDF() && (
                 <button
-                  onClick={handlePDFToggle}
-                  className={`p-1.5 rounded-full transition-all shadow-sm ${
-                    isPdfOpen
-                      ? 'bg-blue-600 hover:bg-blue-700'
-                      : 'bg-white bg-opacity-90 hover:bg-opacity-100'
-                  }`}
-                  title={isPdfOpen ? "Fermer le PDF" : "Ouvrir le PDF"}
+                  onClick={handlePDFOpen}
+                  className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
+                  title="Ouvrir le PDF dans un nouvel onglet"
                 >
-                  {isPdfOpen ? (
-                    <X className="w-4 h-4 text-white" />
-                  ) : (
-                    <FileText className="w-4 h-4 text-red-600" />
-                  )}
+                  <FileText className="w-4 h-4 text-red-600" />
                 </button>
               )}
 
@@ -415,6 +414,29 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
           </div>
         )}
       </div>
+
+      {/* Bouton flottant pour la vue split */}
+      {hasPDF() && (
+        <button
+          onClick={handlePDFToggle}
+          className={`fixed right-4 top-1/2 transform -translate-y-1/2 z-20 transition-all duration-300 group ${
+            isPdfOpen
+              ? 'bg-blue-600 hover:bg-blue-700 shadow-lg'
+              : 'bg-gray-200 hover:bg-gray-300 hover:shadow-lg'
+          } rounded-full p-3`}
+          title={isPdfOpen ? "Fermer la vue split" : "Ouvrir en vue split"}
+        >
+          <div className={`transition-all duration-300 ${
+            isPdfOpen ? 'scale-100 opacity-100' : 'scale-75 opacity-60 group-hover:scale-100 group-hover:opacity-100'
+          }`}>
+            {isPdfOpen ? (
+              <X className="w-5 h-5 text-white" />
+            ) : (
+              <PanelRightOpen className="w-5 h-5 text-gray-700" />
+            )}
+          </div>
+        </button>
+      )}
     </div>
   );
 };
