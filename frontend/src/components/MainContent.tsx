@@ -71,7 +71,7 @@ const MainContent: React.FC<MainContentProps> = ({
           <div className="flex items-start space-x-4">
             {paper.image && (
               <img
-                src={paper.image}
+                src={`/api/${paper.image}`}
                 alt={paper.title}
                 className="w-16 h-20 object-cover rounded"
               />
