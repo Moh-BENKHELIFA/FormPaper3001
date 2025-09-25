@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Grid, List, Table, Filter } from 'lucide-react';
+import { Search, Grid, List, Table, Filter, Image } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { Paper, PaperFilters } from '../types/Paper';
 import PaperFiltersComponent from './PaperFilters';
@@ -107,6 +107,7 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
     { mode: 'grid' as const, icon: Grid, label: 'Grille' },
     { mode: 'list' as const, icon: List, label: 'Liste' },
     { mode: 'table' as const, icon: Table, label: 'Tableau' },
+    { mode: 'images' as const, icon: Image, label: 'Images' },
   ];
 
   return (

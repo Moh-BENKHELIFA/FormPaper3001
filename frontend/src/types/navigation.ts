@@ -1,4 +1,4 @@
-export type ViewMode = 'grid' | 'list' | 'table';
+export type ViewMode = 'grid' | 'list' | 'table' | 'images';
 
 export type PageType = 'home' | 'notes' | 'add-paper' | 'settings';
 
