@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, FileText, Globe, Eye, BookOpen, CheckCircle, Heart } from 'lucide-react';
+import { ArrowLeft, Save, FileText, Globe, Eye, BookOpen, CheckCircle, Heart, X } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -7,6 +7,8 @@ import { fileNotesStorage } from '../services/fileNotesStorage';
 import { Paper } from '../types/Paper';
 import { Block } from '../types/BlockTypes';
 import BlockEditor from './BlockEditor';
+import SplitView from './SplitView';
+import PDFViewer from './PDFViewer';
 
 interface PaperNotesProps {
   paperId: number;
@@ -20,6 +22,8 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isPdfOpen, setIsPdfOpen] = useState(false);
+  const [splitPercentage, setSplitPercentage] = useState(50);
 
   useEffect(() => {
     loadPaper();
@@ -117,12 +121,23 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
     }
   };
 
-  const handlePDFOpen = () => {
-    if (paper?.folder_path) {
-      const pdfUrl = `/api/papers/${paper.id}/pdf`;
-      window.open(pdfUrl, '_blank');
-    }
+  const handlePDFToggle = () => {
+    setIsPdfOpen(!isPdfOpen);
   };
+
+  const handleSplitChange = (percentage: number) => {
+    setSplitPercentage(percentage);
+    // Sauvegarder la préférence dans le localStorage
+    localStorage.setItem(`split_${paperId}`, percentage.toString());
+  };
+
+  // Charger la préférence de split au chargement
+  useEffect(() => {
+    const savedSplit = localStorage.getItem(`split_${paperId}`);
+    if (savedSplit) {
+      setSplitPercentage(parseFloat(savedSplit));
+    }
+  }, [paperId]);
 
   const hasPDF = () => {
     return paper?.folder_path !== null && paper?.folder_path !== '';
@@ -298,11 +313,19 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
               {/* Bouton PDF si disponible */}
               {hasPDF() && (
                 <button
-                  onClick={handlePDFOpen}
-                  className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
-                  title="Ouvrir le PDF"
+                  onClick={handlePDFToggle}
+                  className={`p-1.5 rounded-full transition-all shadow-sm ${
+                    isPdfOpen
+                      ? 'bg-blue-600 hover:bg-blue-700'
+                      : 'bg-white bg-opacity-90 hover:bg-opacity-100'
+                  }`}
+                  title={isPdfOpen ? "Fermer le PDF" : "Ouvrir le PDF"}
                 >
-                  <FileText className="w-4 h-4 text-red-600" />
+                  {isPdfOpen ? (
+                    <X className="w-4 h-4 text-white" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-red-600" />
+                  )}
                 </button>
               )}
 
@@ -358,12 +381,39 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
         </div>
       </div>
 
-      <div className="bg-white">
-        <BlockEditor
-          articleId={paperId.toString()}
-          initialBlocks={blocks}
-          onSave={saveNotes}
-        />
+      {/* Contenu principal - Notes seules ou SplitView avec PDF */}
+      <div className="flex-1 bg-white" style={{ height: 'calc(100vh - 90px)' }}>
+        {isPdfOpen && hasPDF() ? (
+          <SplitView
+            leftPanel={
+              <div className="h-full bg-white">
+                <BlockEditor
+                  articleId={paperId.toString()}
+                  initialBlocks={blocks}
+                  onSave={saveNotes}
+                />
+              </div>
+            }
+            rightPanel={
+              <PDFViewer
+                paperId={paperId}
+                className="h-full"
+              />
+            }
+            defaultSplitPercentage={splitPercentage}
+            onSplitChange={handleSplitChange}
+            minLeftWidth={350}
+            minRightWidth={350}
+          />
+        ) : (
+          <div className="h-full">
+            <BlockEditor
+              articleId={paperId.toString()}
+              initialBlocks={blocks}
+              onSave={saveNotes}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
