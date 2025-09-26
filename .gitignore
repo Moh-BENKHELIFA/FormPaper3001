@@ -141,4 +141,4 @@ extracted_images/
 
 *.db
 /backend/uploads
-*.db
+
