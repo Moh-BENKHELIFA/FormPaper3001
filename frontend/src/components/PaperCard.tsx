@@ -4,6 +4,7 @@ import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
 import { Paper, Tag } from '../types/Paper';
+import PaperCardContextMenu from './PaperCardContextMenu';
 
 interface PaperCardProps {
   paper: Paper;
@@ -20,6 +21,10 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
   const [tagsLoading, setTagsLoading] = useState(false);
   const [localPaper, setLocalPaper] = useState<Paper>(paper);
   const [lastClickTime, setLastClickTime] = useState(0);
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+  }>({ isOpen: false, position: { x: 0, y: 0 } });
 
   useEffect(() => {
     loadTags();
@@ -66,6 +71,112 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
       window.getSelection()?.removeAllRanges();
     }
     goToNotes(localPaper.id);
+  };
+
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setContextMenu({
+      isOpen: true,
+      position: { x: event.clientX, y: event.clientY }
+    });
+  };
+
+  const closeContextMenu = () => {
+    setContextMenu({ isOpen: false, position: { x: 0, y: 0 } });
+  };
+
+  // Handlers pour le context menu
+  const handleOpenNotes = () => {
+    goToNotes(localPaper.id);
+  };
+
+  const handleOpenNotesNewTab = () => {
+    const notesUrl = `${window.location.origin}/notes/${localPaper.id}`;
+    window.open(notesUrl, '_blank');
+  };
+
+  const handleOpenPDF = () => {
+    window.open(`/api/papers/${localPaper.id}/pdf`, '_blank');
+  };
+
+  const handleCopyTitle = async () => {
+    try {
+      await navigator.clipboard.writeText(localPaper.title);
+      success('Titre copié dans le presse-papiers');
+    } catch (err) {
+      error('Erreur', 'Impossible de copier le titre');
+    }
+  };
+
+  const handleCopyDOI = async () => {
+    if (!localPaper.doi) return;
+
+    try {
+      await navigator.clipboard.writeText(localPaper.doi);
+      success('DOI copié dans le presse-papiers');
+    } catch (err) {
+      error('Erreur', 'Impossible de copier le DOI');
+    }
+  };
+
+  const handleManageTags = () => {
+    // TODO: Implémenter l'ouverture du modal de gestion des tags
+    console.log('Gérer les tags pour:', localPaper.title);
+    success('Fonction de gestion des tags à implémenter');
+  };
+
+  // Versions simplifiées pour le context menu (sans event parameter)
+  const handleStatusChangeFromMenu = async (newStatus: Paper['reading_status']) => {
+    if (isUpdating) return;
+
+    try {
+      setIsUpdating(true);
+      await paperService.updateReadingStatus(localPaper.id, newStatus);
+
+      const updatedPaper = { ...localPaper, reading_status: newStatus };
+      setLocalPaper(updatedPaper);
+
+      if (onPaperUpdate) {
+        onPaperUpdate(updatedPaper);
+      } else {
+        onStatusChange?.();
+      }
+      onStatsUpdate?.();
+    } catch (err) {
+      error('Erreur', 'Impossible de mettre à jour le statut');
+      setLocalPaper(paper);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleFavoriteToggleFromMenu = async () => {
+    if (isUpdating) return;
+
+    try {
+      setIsUpdating(true);
+      const newFavoriteStatus = !localPaper.is_favorite;
+      await paperService.updateFavoriteStatus(localPaper.id, newFavoriteStatus);
+
+      const updatedPaper = { ...localPaper, is_favorite: newFavoriteStatus };
+      setLocalPaper(updatedPaper);
+
+      success(newFavoriteStatus ? 'Ajouté aux favoris' : 'Retiré des favoris');
+
+      if (onPaperUpdate) {
+        onPaperUpdate(updatedPaper);
+      } else {
+        onStatusChange?.();
+      }
+      onStatsUpdate?.();
+    } catch (err) {
+      error('Erreur', 'Impossible de mettre à jour les favoris');
+      setLocalPaper(paper);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleStatusChange = async (newStatus: Paper['reading_status'], event: React.MouseEvent) => {
@@ -129,8 +240,10 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
     }
   };
 
-  const handleDeletePaper = async (event: React.MouseEvent) => {
-    event.stopPropagation();
+  const handleDeletePaper = async (event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation();
+    }
 
     if (isUpdating) return;
 
@@ -272,12 +385,14 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
   };
 
   return (
-    <div
-      className="card cursor-pointer transform transition-transform hover:scale-105 flex flex-col h-full"
-      onClick={handleCardClick}
-      onDoubleClick={handleCardDoubleClick}
-      onMouseDown={handleCardMouseDown}
-    >
+    <>
+      <div
+        className="card cursor-pointer transform transition-transform hover:scale-105 flex flex-col h-full"
+        onClick={handleCardClick}
+        onDoubleClick={handleCardDoubleClick}
+        onMouseDown={handleCardMouseDown}
+        onContextMenu={handleContextMenu}
+      >
       {/* Image de couverture */}
       <div className="relative h-48 bg-gray-200 overflow-hidden rounded-t-lg">
         {localPaper.image ? (
@@ -392,6 +507,24 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
         </div>
       </div>
     </div>
+
+    {/* Context Menu */}
+    <PaperCardContextMenu
+      isOpen={contextMenu.isOpen}
+      position={contextMenu.position}
+      paper={localPaper}
+      onClose={closeContextMenu}
+      onOpenNotes={handleOpenNotes}
+      onOpenNotesNewTab={handleOpenNotesNewTab}
+      onOpenPDF={handleOpenPDF}
+      onCopyTitle={handleCopyTitle}
+      onCopyDOI={handleCopyDOI}
+      onToggleFavorite={handleFavoriteToggleFromMenu}
+      onChangeStatus={handleStatusChangeFromMenu}
+      onManageTags={handleManageTags}
+      onDelete={handleDeletePaper}
+    />
+    </>
   );
 };
 

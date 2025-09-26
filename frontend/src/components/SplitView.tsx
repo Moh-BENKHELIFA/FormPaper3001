@@ -82,7 +82,7 @@ const SplitView: React.FC<SplitViewProps> = ({
 
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
-      document.body.style.pointerEvents = 'none';
+      // Ne pas désactiver les pointer events pour permettre le scroll
 
       return () => {
         document.removeEventListener('mousemove', handleMouseMoveGlobal);
@@ -91,7 +91,6 @@ const SplitView: React.FC<SplitViewProps> = ({
         window.removeEventListener('blur', handleMouseUpGlobal);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
-        document.body.style.pointerEvents = '';
       };
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
@@ -99,11 +98,11 @@ const SplitView: React.FC<SplitViewProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`flex h-full ${className}`}
+      className={`flex h-full ${className} ${isDragging ? 'select-none' : ''}`}
     >
       {/* Left Panel */}
       <div
-        className="flex-shrink-0 overflow-hidden"
+        className="flex-shrink-0 overflow-auto"
         style={{ width: `${splitPercentage}%` }}
       >
         {leftPanel}
@@ -137,7 +136,7 @@ const SplitView: React.FC<SplitViewProps> = ({
 
       {/* Right Panel */}
       <div
-        className="flex-1 overflow-hidden"
+        className="flex-1 overflow-auto"
         style={{ width: `${100 - splitPercentage}%` }}
       >
         {rightPanel}
