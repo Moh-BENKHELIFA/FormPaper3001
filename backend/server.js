@@ -12,7 +12,7 @@ const imageUploadRoutes = require('./routes/imageUpload');
 const notesStorageRoutes = require('./routes/notesStorage');
 
 const app = express();
-const PORT = process.env.PORT || 5003;
+const PORT = process.env.PORT || 5004;
 
 app.use(cors());
 app.use(express.json());
@@ -336,7 +336,25 @@ app.post('/api/papers/:id/cover-image', imageUpload.single('coverImage'), async 
     const imageFileName = `paper_Cover_${paperId}${fileExtension}`;
 
     // Créer le chemin vers le dossier de l'article dans MyPapers
-    const paperFolderPath = path.join(__dirname, 'MyPapers', paper.folder_path);
+    let folderPath = paper.folder_path;
+    if (!folderPath) {
+      // Si l'article n'a pas de dossier, en créer un basé sur le titre et l'ID
+      let cleanTitle = paper.title
+        .replace(/[^\w\s-]/g, '') // Supprimer les caractères spéciaux
+        .replace(/\s+/g, '_') // Remplacer les espaces par des underscores
+        .toLowerCase();
+
+      if (cleanTitle.length > 50) {
+        cleanTitle = cleanTitle.substring(0, 50);
+      }
+
+      folderPath = `${cleanTitle}_${paperId}`;
+
+      // Mettre à jour la base de données avec le nouveau folder_path
+      await database.updatePaper(paperId, { ...paper, folder_path: folderPath });
+    }
+
+    const paperFolderPath = path.join(__dirname, 'MyPapers', folderPath);
     const imageFilePath = path.join(paperFolderPath, imageFileName);
 
     try {
@@ -350,7 +368,7 @@ app.post('/api/papers/:id/cover-image', imageUpload.single('coverImage'), async 
       await fs.remove(imageFile.path);
 
       // Mettre à jour la base de données avec le chemin de l'image
-      const imagePath = `MyPapers/${paper.folder_path}/${imageFileName}`;
+      const imagePath = `MyPapers/${folderPath}/${imageFileName}`;
       await database.updatePaper(paperId, { ...paper, image: imagePath });
 
       console.log(`✅ Cover image saved: ${imageFilePath}`);
@@ -385,22 +403,34 @@ app.post('/api/papers/:id/save-pdf-assets', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Paper not found' });
     }
 
-    const paperFolderPath = path.join(__dirname, 'MyPapers', paper.folder_path);
+    // Créer le dossier pour l'article s'il n'en a pas
+    let folderPath = paper.folder_path;
+    if (!folderPath) {
+      // Si l'article n'a pas de dossier, en créer un basé sur le titre et l'ID
+      let cleanTitle = paper.title
+        .replace(/[^\w\s-]/g, '') // Supprimer les caractères spéciaux
+        .replace(/\s+/g, '_') // Remplacer les espaces par des underscores
+        .toLowerCase();
+
+      if (cleanTitle.length > 50) {
+        cleanTitle = cleanTitle.substring(0, 50);
+      }
+
+      folderPath = `${cleanTitle}_${paperId}`;
+
+      // Mettre à jour la base de données avec le nouveau folder_path
+      await database.updatePaper(paperId, { ...paper, folder_path: folderPath });
+    }
+
+    const paperFolderPath = path.join(__dirname, 'MyPapers', folderPath);
 
     // S'assurer que le dossier du papier existe
     await fs.ensureDir(paperFolderPath);
 
     // Créer le nom du fichier PDF: titre_id.pdf
-    let cleanTitle = paper.title
-      .replace(/[^\w\s-]/g, '') // Supprimer les caractères spéciaux
-      .replace(/\s+/g, '_') // Remplacer les espaces par des underscores
-      .toLowerCase();
-
-    if (cleanTitle.length > 50) {
-      cleanTitle = cleanTitle.substring(0, 50);
-    }
-
-    const pdfFileName = `${cleanTitle}_${paperId}.pdf`;
+    // Utiliser le même cleanTitle que pour le dossier si le dossier a été créé
+    const cleanTitleForPdf = folderPath.replace(`_${paperId}`, '');
+    const pdfFileName = `${cleanTitleForPdf}_${paperId}.pdf`;
     const finalPdfPath = path.join(paperFolderPath, pdfFileName);
 
     // Copier le PDF vers le dossier du papier
@@ -422,7 +452,7 @@ app.post('/api/papers/:id/save-pdf-assets', async (req, res) => {
           await fs.copyFile(imagePath, savedImagePath);
           savedImagesInfo.push({
             original: imagePath,
-            saved: `MyPapers/${paper.folder_path}/saved_images/${imageFileName}`
+            saved: `MyPapers/${folderPath}/saved_images/${imageFileName}`
           });
           console.log(`✅ Image sauvegardée: ${savedImagePath}`);
         }
@@ -435,7 +465,7 @@ app.post('/api/papers/:id/save-pdf-assets', async (req, res) => {
       const coverFileName = `paper_Cover_${paperId}${path.extname(coverImagePath)}`;
       const finalCoverPath = path.join(paperFolderPath, coverFileName);
       await fs.copyFile(coverImagePath, finalCoverPath);
-      coverImageUrl = `MyPapers/${paper.folder_path}/${coverFileName}`;
+      coverImageUrl = `MyPapers/${folderPath}/${coverFileName}`;
 
       // Mettre à jour le papier avec l'image de couverture
       await database.updatePaper(paperId, { ...paper, image: coverImageUrl });
@@ -465,7 +495,7 @@ app.post('/api/papers/:id/save-pdf-assets', async (req, res) => {
     res.json({
       success: true,
       data: {
-        pdfPath: `MyPapers/${paper.folder_path}/${pdfFileName}`,
+        pdfPath: `MyPapers/${folderPath}/${pdfFileName}`,
         savedImages: savedImagesInfo,
         coverImage: coverImageUrl
       }

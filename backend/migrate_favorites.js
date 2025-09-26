@@ -52,13 +52,22 @@ db.run(`ALTER TABLE papers ADD COLUMN is_favorite INTEGER DEFAULT 0`, (err) => {
           console.log('✅ Colonne month ajoutée');
         }
 
-        // Fermer la connexion
-        db.close((err) => {
-          if (err) {
-            console.error('❌ Erreur lors de la fermeture:', err);
-          } else {
-            console.log('🎉 Migration terminée avec succès!');
+        // Ajouter la colonne abstract
+        db.run(`ALTER TABLE papers ADD COLUMN abstract TEXT`, (err) => {
+          if (err && !err.message.includes('duplicate column name')) {
+            console.error('❌ Erreur lors de l\'ajout de la colonne abstract:', err);
+          } else if (!err) {
+            console.log('✅ Colonne abstract ajoutée');
           }
+
+          // Fermer la connexion
+          db.close((err) => {
+            if (err) {
+              console.error('❌ Erreur lors de la fermeture:', err);
+            } else {
+              console.log('🎉 Migration terminée avec succès!');
+            }
+          });
         });
       });
     });

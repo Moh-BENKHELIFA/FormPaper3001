@@ -1,6 +1,6 @@
 export type ViewMode = 'grid' | 'list' | 'table' | 'images';
 
-export type PageType = 'home' | 'notes' | 'add-paper' | 'settings';
+export type PageType = 'home' | 'notes' | 'add-paper' | 'manage-paper' | 'settings';
 
 export interface NavigationState {
   currentPage: PageType;
@@ -17,6 +17,7 @@ export interface NavigationActions {
   goToNotes: (paperId: number) => void;
   goToHome: () => void;
   goToAddPaper: () => void;
+  goToManagePaper: (paperId: number) => void;
   goToSettings: () => void;
 }
 

@@ -21,6 +21,7 @@ export const useNavigation = (): NavigationState & NavigationActions => {
     goToNotes: navigationService.goToNotes.bind(navigationService),
     goToHome: navigationService.goToHome.bind(navigationService),
     goToAddPaper: navigationService.goToAddPaper.bind(navigationService),
+    goToManagePaper: navigationService.goToManagePaper.bind(navigationService),
     goToSettings: navigationService.goToSettings.bind(navigationService),
   };
 

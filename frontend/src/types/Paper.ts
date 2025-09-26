@@ -9,6 +9,7 @@ export interface Paper {
   is_favorite: number;
   year?: number;
   month?: number;
+  abstract?: string;
   image: string | null;
   doi: string | null;
   url: string | null;

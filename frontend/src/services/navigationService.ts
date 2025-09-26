@@ -82,6 +82,16 @@ class NavigationService {
     this.updateURL();
   }
 
+  goToManagePaper(paperId: number): void {
+    this.state = {
+      ...this.state,
+      currentPage: 'manage-paper',
+      selectedPaperId: paperId,
+    };
+    this.notify();
+    this.updateURL();
+  }
+
   goToSettings(): void {
     this.state = {
       ...this.state,
@@ -104,6 +114,11 @@ class NavigationService {
         break;
       case 'add-paper':
         path = '/add';
+        break;
+      case 'manage-paper':
+        if (selectedPaperId) {
+          path = `/manage/${selectedPaperId}`;
+        }
         break;
       case 'settings':
         path = '/settings';
@@ -137,6 +152,15 @@ class NavigationService {
         currentPage: 'add-paper',
         selectedPaperId: null,
       };
+    } else if (path.startsWith('/manage/')) {
+      const paperId = parseInt(path.split('/')[2]);
+      if (!isNaN(paperId)) {
+        this.state = {
+          ...this.state,
+          currentPage: 'manage-paper',
+          selectedPaperId: paperId,
+        };
+      }
     } else if (path === '/settings') {
       this.state = {
         ...this.state,

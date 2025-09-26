@@ -14,7 +14,7 @@ interface PaperCardProps {
 }
 
 const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpdate, onStatsUpdate }) => {
-  const { goToNotes } = useNavigation();
+  const { goToNotes, goToManagePaper } = useNavigation();
   const { success, error } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [tags, setTags] = useState<Tag[]>([]);
@@ -125,6 +125,10 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
     // TODO: Implémenter l'ouverture du modal de gestion des tags
     console.log('Gérer les tags pour:', localPaper.title);
     success('Fonction de gestion des tags à implémenter');
+  };
+
+  const handleManagePaper = () => {
+    goToManagePaper(localPaper.id);
   };
 
   // Versions simplifiées pour le context menu (sans event parameter)
@@ -522,6 +526,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
       onToggleFavorite={handleFavoriteToggleFromMenu}
       onChangeStatus={handleStatusChangeFromMenu}
       onManageTags={handleManageTags}
+      onManagePaper={handleManagePaper}
       onDelete={handleDeletePaper}
     />
     </>

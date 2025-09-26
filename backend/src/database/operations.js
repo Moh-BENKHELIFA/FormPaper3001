@@ -126,8 +126,8 @@ class PaperOperations {
 
     // D'abord insérer l'article pour obtenir l'ID
     const sql = `
-      INSERT INTO papers (title, authors, publication_date, conference, conference_short, reading_status, is_favorite, year, month, image, doi, url, folder_path)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO papers (title, authors, publication_date, conference, conference_short, reading_status, is_favorite, year, month, abstract, image, doi, url, folder_path)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -140,6 +140,7 @@ class PaperOperations {
       paperData.is_favorite || 0,
       paperData.year || null,
       paperData.month || null,
+      paperData.abstract || null,
       paperData.image,
       paperData.doi,
       paperData.url,
@@ -173,8 +174,9 @@ class PaperOperations {
 
     const sql = `
       UPDATE papers
-      SET title = ?, authors = ?, publication_date = ?, conference = ?,
-          reading_status = ?, image = ?, doi = ?, url = ?, folder_path = ?
+      SET title = ?, authors = ?, publication_date = ?, conference = ?, conference_short = ?,
+          reading_status = ?, is_favorite = ?, year = ?, month = ?, abstract = ?,
+          image = ?, doi = ?, url = ?, folder_path = ?
       WHERE id = ?
     `;
 
@@ -183,7 +185,12 @@ class PaperOperations {
       paperData.authors,
       paperData.publication_date,
       paperData.conference,
+      paperData.conference_short,
       paperData.reading_status,
+      paperData.is_favorite,
+      paperData.year,
+      paperData.month,
+      paperData.abstract,
       paperData.image,
       paperData.doi,
       paperData.url,

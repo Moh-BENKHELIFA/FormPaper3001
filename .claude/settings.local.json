@@ -19,7 +19,8 @@
       "Bash(del formpaper.db)",
       "Bash(del C:UsersmbenkhelDevWebFormPaper3001temp_image_upload_component.tsx)",
       "Bash(dir:*)",
-      "Bash(PORT=5004 node server.js)"
+      "Bash(PORT=5004 node server.js)",
+      "Bash(sqlite3:*)"
     ],
     "deny": [],
     "ask": []

@@ -9,7 +9,8 @@ import {
   ExternalLink,
   Copy,
   Tag as TagIcon,
-  X
+  X,
+  Settings
 } from 'lucide-react';
 import { Paper } from '../types/Paper';
 
@@ -26,6 +27,7 @@ interface PaperCardContextMenuProps {
   onToggleFavorite: () => void;
   onChangeStatus: (status: Paper['reading_status']) => void;
   onManageTags: () => void;
+  onManagePaper: () => void;
   onDelete: () => void;
 }
 
@@ -42,6 +44,7 @@ const PaperCardContextMenu: React.FC<PaperCardContextMenuProps> = ({
   onToggleFavorite,
   onChangeStatus,
   onManageTags,
+  onManagePaper,
   onDelete,
 }) => {
   if (!isOpen) return null;
@@ -157,6 +160,14 @@ const PaperCardContextMenu: React.FC<PaperCardContextMenuProps> = ({
 
         {/* Actions secondaires */}
         <div className="py-1">
+          <button
+            onClick={(e) => handleMenuItemClick(onManagePaper, e)}
+            className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-3"
+          >
+            <Settings className="w-4 h-4 text-indigo-600" />
+            <span className="text-sm text-gray-700">Gérer l'article</span>
+          </button>
+
           <button
             onClick={(e) => handleMenuItemClick(onToggleFavorite, e)}
             className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-3"

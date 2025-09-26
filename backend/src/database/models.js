@@ -10,6 +10,7 @@ class Paper {
     this.is_favorite = data.is_favorite || 0;
     this.year = data.year;
     this.month = data.month;
+    this.abstract = data.abstract;
     this.image = data.image;
     this.doi = data.doi;
     this.url = data.url;
@@ -75,6 +76,7 @@ class Paper {
       is_favorite: this.is_favorite,
       year: this.year,
       month: this.month,
+      abstract: this.abstract,
       image: this.image,
       doi: this.doi,
       url: this.url,

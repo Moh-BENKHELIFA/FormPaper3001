@@ -1,0 +1,16 @@
+{
+  "ignore": [
+    "*.db",
+    "*.sqlite",
+    "*.sqlite3",
+    "uploads/*",
+    "MyPapers/*",
+    "node_modules/*",
+    "*.log",
+    "logs/*"
+  ],
+  "ext": "js,json",
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
