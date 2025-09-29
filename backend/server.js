@@ -10,6 +10,7 @@ const database = require('./src/database');
 const tagsRoutes = require('./src/routes/tagsRoutes');
 const imageUploadRoutes = require('./routes/imageUpload');
 const notesStorageRoutes = require('./routes/notesStorage');
+const aiRoutes = require('./routes/aiRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5004;
@@ -424,6 +425,7 @@ app.post('/api/categories', async (req, res) => {
 app.use('/api/tags', tagsRoutes);
 app.use('/api', imageUploadRoutes);
 app.use('/api', notesStorageRoutes);
+app.use('/api', aiRoutes);
 
 // Route pour uploader l'image de couverture d'un article
 app.post('/api/papers/:id/cover-image', imageUpload.single('coverImage'), async (req, res) => {

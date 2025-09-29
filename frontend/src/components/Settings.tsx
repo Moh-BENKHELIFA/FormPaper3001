@@ -9,7 +9,7 @@ import Modal from './Modal';
 const Settings: React.FC = () => {
   const { goToHome } = useNavigation();
   const { success, error } = useToast();
-  const [activeSection, setActiveSection] = useState<'general' | 'tags' | 'integrations'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'tags' | 'integrations' | 'ai'>('general');
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -25,6 +25,23 @@ const Settings: React.FC = () => {
   const [tagName, setTagName] = useState('');
   const [tagColor, setTagColor] = useState('#3B82F6');
 
+  // AI/Ollama states
+  const [ollamaStatus, setOllamaStatus] = useState<{
+    installed: boolean;
+    running: boolean;
+    models: any[];
+  }>({ installed: false, running: false, models: [] });
+  const [availableModels, setAvailableModels] = useState<any[]>([]);
+  const [installedModels, setInstalledModels] = useState<any[]>([]);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
+
+  // Search states
+  const [showModelSearch, setShowModelSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const emptyStats: PaperStats = {
     total: 0,
     unread: 0,
@@ -36,6 +53,8 @@ const Settings: React.FC = () => {
   useEffect(() => {
     if (activeSection === 'tags') {
       loadTags();
+    } else if (activeSection === 'ai') {
+      loadOllamaData();
     }
   }, [activeSection]);
 
@@ -50,6 +69,213 @@ const Settings: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadOllamaData = async () => {
+    try {
+      setIsLoadingAI(true);
+
+      // Charger le statut d'Ollama
+      const statusResponse = await fetch('http://localhost:5004/api/ollama/status');
+      const statusData = await statusResponse.json();
+
+      if (statusData.success) {
+        setOllamaStatus(statusData.data);
+        setInstalledModels(statusData.data.models);
+      }
+
+      // Charger les modèles disponibles
+      const modelsResponse = await fetch('http://localhost:5004/api/ollama/models/available');
+      const modelsData = await modelsResponse.json();
+
+      if (modelsData.success) {
+        setAvailableModels(modelsData.data);
+      }
+    } catch (err) {
+      error('Erreur', 'Impossible de charger les données IA');
+      console.error('Error loading Ollama data:', err);
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
+  const handleDownloadModel = async (modelName: string) => {
+    try {
+      setDownloadingModel(modelName);
+
+      const response = await fetch('http://localhost:5004/api/ollama/models/pull', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ modelName }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        success(
+          'Téléchargement démarré ⏳',
+          `${modelName} est en cours de téléchargement. Cela peut prendre plusieurs minutes selon la taille du modèle.`
+        );
+
+        // Créer un système de vérification périodique
+        const checkDownload = async () => {
+          try {
+            const checkResponse = await fetch('http://localhost:5004/api/ollama/models/installed');
+            const checkData = await checkResponse.json();
+
+            if (checkData.success) {
+              const isInstalled = checkData.data.some((model: any) =>
+                model.name === modelName || model.name.startsWith(modelName.split(':')[0])
+              );
+
+              if (isInstalled) {
+                success('Téléchargement terminé ✅', `${modelName} a été installé avec succès !`);
+                loadOllamaData();
+                return true;
+              }
+            }
+            return false;
+          } catch (error) {
+            console.error('Error checking download:', error);
+            return false;
+          }
+        };
+
+        // Vérifier toutes les 10 secondes pendant 5 minutes max
+        let attempts = 0;
+        const maxAttempts = 30; // 5 minutes
+        const checkInterval = setInterval(async () => {
+          attempts++;
+          const isComplete = await checkDownload();
+
+          if (isComplete || attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            if (attempts >= maxAttempts && !isComplete) {
+              error(
+                'Timeout de vérification',
+                `Le téléchargement de ${modelName} prend plus de temps que prévu. Vérifiez manuellement avec le bouton "Actualiser".`
+              );
+            }
+            setDownloadingModel(null);
+          }
+        }, 10000);
+
+        // Message informatif après 30 secondes
+        setTimeout(() => {
+          if (downloadingModel === modelName) {
+            success(
+              'Téléchargement en cours... 📥',
+              `${modelName} est toujours en cours de téléchargement. Patience, les gros modèles prennent du temps !`
+            );
+          }
+        }, 30000);
+
+      } else {
+        error('Erreur', data.error || 'Impossible de démarrer le téléchargement');
+        setDownloadingModel(null);
+      }
+    } catch (err) {
+      error('Erreur', 'Impossible de télécharger le modèle');
+      console.error('Error downloading model:', err);
+      setDownloadingModel(null);
+    }
+  };
+
+  const handleTestModel = async (modelName: string) => {
+    try {
+      setIsLoadingAI(true);
+
+      const response = await fetch('http://localhost:5004/api/ollama/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ modelName }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        success('Test réussi', `Le modèle ${modelName} fonctionne correctement`);
+      } else {
+        error('Test échoué', data.error || 'Le modèle ne répond pas');
+      }
+    } catch (err) {
+      error('Erreur', 'Impossible de tester le modèle');
+      console.error('Error testing model:', err);
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
+  const handleDeleteModel = async (modelName: string) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer le modèle ${modelName} ?`)) {
+      return;
+    }
+
+    try {
+      setIsLoadingAI(true);
+
+      const response = await fetch(`http://localhost:5004/api/ollama/models/${modelName}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        success('Suppression réussie', `Le modèle ${modelName} a été supprimé`);
+        loadOllamaData();
+      } else {
+        error('Erreur', data.error || 'Impossible de supprimer le modèle');
+      }
+    } catch (err) {
+      error('Erreur', 'Impossible de supprimer le modèle');
+      console.error('Error deleting model:', err);
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
+  const handleSearchModels = async (query: string) => {
+    try {
+      setIsSearching(true);
+
+      const url = new URL('http://localhost:5004/api/ollama/models/search');
+      if (query.trim()) {
+        url.searchParams.append('q', query.trim());
+      }
+
+      const response = await fetch(url.toString());
+      const data = await response.json();
+
+      if (data.success) {
+        setSearchResults(data.data.models);
+      } else {
+        error('Erreur', data.error || 'Impossible de rechercher les modèles');
+      }
+    } catch (err) {
+      error('Erreur', 'Impossible de rechercher les modèles');
+      console.error('Error searching models:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleOpenModelSearch = () => {
+    setShowModelSearch(true);
+    handleSearchModels(''); // Charger tous les modèles au départ
+  };
+
+  const handleSearchInputChange = (query: string) => {
+    setSearchQuery(query);
+    // Debounce la recherche
+    const timeoutId = setTimeout(() => {
+      handleSearchModels(query);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
   };
 
   const handleCreateTag = async () => {
@@ -160,6 +386,7 @@ const Settings: React.FC = () => {
   const menuItems = [
     { id: 'general', label: 'Général', icon: '⚙️' },
     { id: 'tags', label: 'Gestion des Tags', icon: '🏷️' },
+    { id: 'ai', label: 'Intelligence Artificielle', icon: '🤖' },
     { id: 'integrations', label: 'Intégrations', icon: '🔗' },
   ];
 
@@ -342,6 +569,293 @@ const Settings: React.FC = () => {
     </div>
   );
 
+  const renderAISettings = () => (
+    <div className="space-y-6">
+      {/* Statut Ollama */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Configuration Ollama</h3>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                ollamaStatus.running ? 'bg-green-100' : ollamaStatus.installed ? 'bg-yellow-100' : 'bg-red-100'
+              }`}>
+                <span className="text-xl">🤖</span>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">Ollama</h4>
+                <p className="text-sm text-gray-500">
+                  {!ollamaStatus.installed
+                    ? 'Non installé'
+                    : ollamaStatus.running
+                      ? 'En cours d\'exécution'
+                      : 'Installé mais arrêté'
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${
+                ollamaStatus.running ? 'bg-green-500' : ollamaStatus.installed ? 'bg-yellow-500' : 'bg-red-500'
+              }`}></div>
+              <button
+                onClick={loadOllamaData}
+                disabled={isLoadingAI}
+                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 border"
+              >
+                {isLoadingAI ? 'Vérification...' : 'Actualiser'}
+              </button>
+            </div>
+          </div>
+
+          {!ollamaStatus.installed && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h5 className="text-sm font-medium text-yellow-800 mb-2">Installation requise</h5>
+              <p className="text-sm text-yellow-700 mb-3">
+                Ollama n'est pas installé sur ce système. Téléchargez-le depuis le site officiel.
+              </p>
+              <a
+                href="https://ollama.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-3 py-2 text-sm bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+              >
+                Télécharger Ollama
+              </a>
+            </div>
+          )}
+
+          {ollamaStatus.installed && !ollamaStatus.running && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h5 className="text-sm font-medium text-blue-800 mb-2">Démarrage nécessaire</h5>
+              <p className="text-sm text-blue-700 mb-3">
+                Ollama est installé mais n'est pas en cours d'exécution. Démarrez-le depuis votre terminal avec :
+              </p>
+              <code className="block bg-gray-100 rounded px-2 py-1 text-sm font-mono">ollama serve</code>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Gestion des modèles */}
+      {ollamaStatus.running && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Modèles disponibles</h3>
+            <button
+              onClick={handleOpenModelSearch}
+              className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+            >
+              <span>🔍</span>
+              <span>Rechercher plus de modèles</span>
+            </button>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200">
+            <div className="p-4 border-b border-gray-200">
+              <h4 className="text-sm font-medium text-gray-900">Modèles recommandés</h4>
+              <p className="text-sm text-gray-500 mt-1">Choisissez et téléchargez les modèles adaptés à votre matériel</p>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {isLoadingAI ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p>Chargement des modèles...</p>
+                </div>
+              ) : (
+                availableModels.map((model) => {
+                  const isInstalled = installedModels.some(installed => installed.name === model.name);
+                  const isDownloading = downloadingModel === model.name;
+
+                  return (
+                    <div key={model.name} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-3 h-3 rounded-full ${
+                            isInstalled ? 'bg-green-500' : 'bg-gray-300'
+                          }`}></div>
+                          <div>
+                            <h5 className="text-sm font-medium text-gray-900 flex items-center space-x-2">
+                              <span>{model.name}</span>
+                              {model.recommended && (
+                                <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                                  Recommandé
+                                </span>
+                              )}
+                            </h5>
+                            <p className="text-sm text-gray-500">{model.description}</p>
+                            <p className="text-xs text-gray-400">Taille: {model.size}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        {isInstalled ? (
+                          <>
+                            <button
+                              onClick={() => handleTestModel(model.name)}
+                              disabled={isLoadingAI}
+                              className="px-3 py-1 text-xs text-green-600 hover:bg-green-50 rounded border border-green-200"
+                            >
+                              Tester
+                            </button>
+                            <button
+                              onClick={() => handleDeleteModel(model.name)}
+                              disabled={isLoadingAI}
+                              className="px-3 py-1 text-xs text-red-600 hover:bg-red-50 rounded border border-red-200"
+                            >
+                              Supprimer
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleDownloadModel(model.name)}
+                            disabled={isDownloading || isLoadingAI}
+                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {isDownloading ? 'Téléchargement...' : 'Télécharger'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modèles installés */}
+      {ollamaStatus.running && installedModels.length > 0 && (
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Modèles installés ({installedModels.length})</h3>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="space-y-3">
+              {installedModels.map((model) => (
+                <div key={model.name} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-900">{model.name}</h5>
+                      {model.size && (
+                        <p className="text-xs text-gray-500">Taille: {Math.round(model.size / (1024 * 1024 * 1024) * 10) / 10} GB</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleTestModel(model.name)}
+                      disabled={isLoadingAI}
+                      className="px-3 py-1 text-xs text-green-600 hover:bg-green-100 rounded border border-green-300"
+                    >
+                      Tester
+                    </button>
+                    <button
+                      onClick={() => handleDeleteModel(model.name)}
+                      disabled={isLoadingAI}
+                      className="px-3 py-1 text-xs text-red-600 hover:bg-red-100 rounded border border-red-300"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tutorial d'utilisation */}
+      {ollamaStatus.running && installedModels.length > 0 && (
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">🎓 Comment utiliser l'IA</h3>
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 p-6">
+            <div className="space-y-4">
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 font-bold text-sm">1</span>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-1">📄 Ouvrir un article</h4>
+                  <p className="text-sm text-gray-600">
+                    Dans la liste des articles, cliquez sur un paper pour ouvrir ses notes.
+                    L'IA pourra analyser le contenu du PDF automatiquement.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <span className="text-purple-600 font-bold text-sm">2</span>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-1">💬 Utiliser le chat IA</h4>
+                  <p className="text-sm text-gray-600">
+                    Dans la page de notes, vous trouverez un bouton "Chat IA" qui ouvre une interface
+                    pour poser des questions sur l'article.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-green-600 font-bold text-sm">3</span>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-1">🤖 Exemples de questions</h4>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>• "Peux-tu me résumer cet article en 3 points clés ?"</p>
+                    <p>• "Quelles sont les principales contributions de cette recherche ?"</p>
+                    <p>• "Explique-moi la méthodologie utilisée"</p>
+                    <p>• "Quelles sont les limites de cette étude ?"</p>
+                    <p>• "Comment cette recherche se compare-t-elle aux travaux précédents ?"</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-lg">💡</span>
+                  <h5 className="font-medium text-gray-900">Conseils pour de meilleurs résultats</h5>
+                </div>
+                <ul className="text-sm text-gray-600 space-y-1 ml-6">
+                  <li>• Soyez spécifique dans vos questions</li>
+                  <li>• Demandez des clarifications si nécessaire</li>
+                  <li>• L'IA a accès à tout le contenu du PDF</li>
+                  <li>• Vous pouvez poser des questions de suivi</li>
+                  <li>• Utilisez les résumés pour vous faire une idée générale avant d'approfondir</li>
+                </ul>
+              </div>
+
+              <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-lg">⚠️</span>
+                  <h5 className="font-medium text-yellow-800">Limitations importantes</h5>
+                </div>
+                <ul className="text-sm text-yellow-700 space-y-1 ml-6">
+                  <li>• L'IA peut parfois faire des erreurs d'interprétation</li>
+                  <li>• Vérifiez toujours les informations critiques dans le PDF original</li>
+                  <li>• Les réponses dépendent de la qualité de l'extraction du texte</li>
+                  <li>• L'IA n'a pas accès à des informations externes à l'article</li>
+                </ul>
+              </div>
+
+              <div className="text-center pt-4">
+                <p className="text-sm text-gray-500">
+                  L'interface de chat IA sera bientôt disponible dans les pages d'articles ! 🚀
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Modèle actuel : {installedModels.length > 0 ? installedModels[0].name : 'Aucun'} |
+                  Statut : {ollamaStatus.running ? '🟢 Actif' : '🔴 Arrêté'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const renderColorPicker = () => (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">Couleur</label>
@@ -422,6 +936,7 @@ const Settings: React.FC = () => {
 
               {activeSection === 'general' && renderGeneralSettings()}
               {activeSection === 'tags' && renderTagsSettings()}
+              {activeSection === 'ai' && renderAISettings()}
               {activeSection === 'integrations' && renderIntegrationsSettings()}
             </div>
           </div>
@@ -637,6 +1152,139 @@ const Settings: React.FC = () => {
               {isLoading ? 'Réinitialisation...' : 'Réinitialiser définitivement'}
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Model Search Modal */}
+      <Modal
+        isOpen={showModelSearch}
+        onClose={() => setShowModelSearch(false)}
+        title="🔍 Rechercher des modèles LLM"
+      >
+        <div className="space-y-4 max-h-96 flex flex-col">
+          {/* Barre de recherche */}
+          <div className="sticky top-0 bg-white">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                handleSearchInputChange(e.target.value);
+              }}
+              placeholder="Rechercher par nom, description, ou catégorie..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              autoFocus
+            />
+            {isSearching && (
+              <div className="text-sm text-gray-500 mt-2">Recherche en cours...</div>
+            )}
+          </div>
+
+          {/* Résultats de recherche */}
+          <div className="flex-1 overflow-y-auto space-y-3">
+            {searchResults.length === 0 && !isSearching ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>Aucun modèle trouvé</p>
+                <p className="text-sm mt-1">Essayez avec d'autres termes de recherche</p>
+              </div>
+            ) : (
+              searchResults.map((model) => {
+                const isInstalled = installedModels.some(installed => installed.name === model.name);
+                const isDownloading = downloadingModel === model.name;
+
+                // Couleurs par catégorie
+                const categoryColors: { [key: string]: string } = {
+                  'LLaMA': 'bg-blue-100 text-blue-800',
+                  'Mistral': 'bg-purple-100 text-purple-800',
+                  'Phi': 'bg-green-100 text-green-800',
+                  'Qwen': 'bg-orange-100 text-orange-800',
+                  'Code': 'bg-red-100 text-red-800',
+                  'Gemma': 'bg-indigo-100 text-indigo-800',
+                  'Vision': 'bg-pink-100 text-pink-800',
+                  'Embedding': 'bg-gray-100 text-gray-800',
+                  'Chat': 'bg-yellow-100 text-yellow-800',
+                  'Uncensored': 'bg-red-100 text-red-800',
+                  'Reasoning': 'bg-teal-100 text-teal-800',
+                  'Dolphin': 'bg-cyan-100 text-cyan-800',
+                };
+
+                return (
+                  <div key={model.name} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <div className={`w-3 h-3 rounded-full ${
+                            isInstalled ? 'bg-green-500' : 'bg-gray-300'
+                          }`}></div>
+                          <h5 className="text-sm font-medium text-gray-900 flex items-center space-x-2">
+                            <span>{model.name}</span>
+                            <span className={`px-2 py-0.5 text-xs rounded-full ${
+                              categoryColors[model.category] || 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {model.category}
+                            </span>
+                            <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
+                              {model.params}
+                            </span>
+                          </h5>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">{model.description}</p>
+                        <p className="text-xs text-gray-400">Taille: {model.size}</p>
+                      </div>
+
+                      <div className="ml-4 flex items-center space-x-2">
+                        {isInstalled ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                handleTestModel(model.name);
+                                setShowModelSearch(false);
+                              }}
+                              disabled={isLoadingAI}
+                              className="px-3 py-1 text-xs text-green-600 hover:bg-green-50 rounded border border-green-200"
+                            >
+                              Tester
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDeleteModel(model.name);
+                                setShowModelSearch(false);
+                              }}
+                              disabled={isLoadingAI}
+                              className="px-3 py-1 text-xs text-red-600 hover:bg-red-50 rounded border border-red-200"
+                            >
+                              Supprimer
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              handleDownloadModel(model.name);
+                              setShowModelSearch(false);
+                            }}
+                            disabled={isDownloading || isLoadingAI}
+                            className="px-3 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+                          >
+                            {isDownloading ? 'Téléchargement...' : 'Télécharger'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Footer avec statistiques */}
+          {searchResults.length > 0 && (
+            <div className="sticky bottom-0 bg-white border-t pt-3">
+              <p className="text-sm text-gray-500 text-center">
+                {searchResults.length} modèle(s) trouvé(s)
+                {searchQuery && ` pour "${searchQuery}"`}
+              </p>
+            </div>
+          )}
         </div>
       </Modal>
     </div>

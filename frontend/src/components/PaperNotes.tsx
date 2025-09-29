@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, FileText, Globe, Eye, BookOpen, CheckCircle, Heart, X, Columns2, PanelRightOpen } from 'lucide-react';
+import { ArrowLeft, Save, FileText, Globe, Eye, BookOpen, CheckCircle, Heart, X, Columns2, PanelRightOpen, MessageCircle } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -9,6 +9,7 @@ import { Block } from '../types/BlockTypes';
 import BlockEditor from './BlockEditor';
 import SplitView from './SplitView';
 import PDFViewer from './PDFViewer';
+import AIChat from './AIChat';
 
 interface PaperNotesProps {
   paperId: number;
@@ -24,6 +25,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isPdfOpen, setIsPdfOpen] = useState(false);
   const [splitPercentage, setSplitPercentage] = useState(50);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
 
   useEffect(() => {
     loadPaper();
@@ -328,6 +330,17 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
                 </button>
               )}
 
+              {/* Bouton Chat IA */}
+              {hasPDF() && (
+                <button
+                  onClick={() => setIsAIChatOpen(true)}
+                  className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
+                  title="Chat IA - Analyser avec l'intelligence artificielle"
+                >
+                  <MessageCircle className="w-4 h-4 text-purple-600" />
+                </button>
+              )}
+
               {/* Lien DOI si disponible */}
               {paper.doi && (
                 <a
@@ -436,6 +449,18 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
             )}
           </div>
         </button>
+      )}
+
+      {/* Modal Chat IA */}
+      {isAIChatOpen && paper && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full h-5/6 flex flex-col">
+            <AIChat
+              paper={paper}
+              onClose={() => setIsAIChatOpen(false)}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

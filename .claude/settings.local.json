@@ -22,7 +22,10 @@
       "Bash(PORT=5004 node server.js)",
       "Bash(sqlite3:*)",
       "Bash(PORT=5005 node server.js)",
-      "Bash(PORT=5006 node server.js)"
+      "Bash(PORT=5006 node server.js)",
+      "Bash(ollama ps:*)",
+      "Bash(npm install:*)",
+      "Bash(TASKKILL /F /IM node.exe)"
     ],
     "deny": [],
     "ask": []
