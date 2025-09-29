@@ -17,6 +17,7 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
     search: '',
     status: '',
     category: '',
+    tags: [],
     showFavorites: false,
     sortFavorites: false,
     sortBy: 'date',
@@ -60,6 +61,21 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
 
     if (filters.category) {
       filtered = filtered.filter(paper => paper.conference === filters.category);
+    }
+
+    if (filters.tags && filters.tags.length > 0) {
+      filtered = filtered.filter(paper => {
+        if (!paper.tags) {
+          return false;
+        }
+        const hasMatchingTag = filters.tags.some(tagId =>
+          paper.tags?.some(paperTag => {
+            const match = Number(paperTag.id) === Number(tagId);
+            return match;
+          })
+        );
+        return hasMatchingTag;
+      });
     }
 
     filtered.sort((a, b) => {

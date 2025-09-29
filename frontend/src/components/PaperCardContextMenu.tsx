@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   Eye,
   Heart,
@@ -49,10 +49,37 @@ const PaperCardContextMenu: React.FC<PaperCardContextMenuProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  // Dimensions approximatives du menu
+  const MENU_WIDTH = 256; // w-64 = 16rem = 256px
+  const MENU_HEIGHT = 480; // Hauteur approximative du menu complet
+
+  const viewport = {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  };
+
+  // Calculer la position optimale
+  let top = position.y;
+  let left = position.x;
+
+  // Vérifier si le menu dépasse en bas
+  if (top + MENU_HEIGHT > viewport.height) {
+    top = Math.max(10, viewport.height - MENU_HEIGHT - 10);
+  }
+
+  // Vérifier si le menu dépasse à droite
+  if (left + MENU_WIDTH > viewport.width) {
+    left = Math.max(10, viewport.width - MENU_WIDTH - 10);
+  }
+
+  // S'assurer que le menu ne sort pas du côté gauche ou du haut
+  top = Math.max(10, top);
+  left = Math.max(10, left);
+
   const menuStyle = {
     position: 'fixed' as const,
-    top: Math.min(position.y, window.innerHeight - 400),
-    left: Math.min(position.x, window.innerWidth - 250),
+    top,
+    left,
     zIndex: 1000,
   };
 

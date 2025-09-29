@@ -107,7 +107,26 @@ const imageUpload = multer({
 app.get('/api/papers', async (req, res) => {
   try {
     const papers = await database.getAllPapers();
-    res.json({ success: true, data: papers });
+
+    // Ajouter les tags pour chaque paper
+    const papersWithTags = await Promise.all(
+      papers.map(async (paper) => {
+        try {
+          const tags = await database.db.all(`
+            SELECT t.* FROM tags t
+            INNER JOIN paper_tags pt ON t.id = pt.tag_id
+            WHERE pt.paper_id = ?
+            ORDER BY t.name ASC
+          `, [paper.id]);
+          return { ...paper, tags };
+        } catch (error) {
+          console.error(`Error fetching tags for paper ${paper.id}:`, error);
+          return { ...paper, tags: [] };
+        }
+      })
+    );
+
+    res.json({ success: true, data: papersWithTags });
   } catch (error) {
     console.error('Error fetching papers:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch papers' });
@@ -742,7 +761,7 @@ async function extractDOIFromPDF(filePath) {
 }
 
 async function extractImagesFromPDF(filePath) {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const pythonScript = path.join(__dirname, 'scripts', 'extract_images.py');
 
     // Créer un dossier pour les images extraites dans backend/uploads

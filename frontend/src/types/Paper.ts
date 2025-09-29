@@ -83,6 +83,7 @@ export interface PaperFilters {
   search: string;
   status: string;
   category: string;
+  tags: number[];
   showFavorites: boolean;
   sortFavorites: boolean;
   sortBy: 'date' | 'title' | 'authors';

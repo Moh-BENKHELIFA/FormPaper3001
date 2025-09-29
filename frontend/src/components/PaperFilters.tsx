@@ -1,5 +1,6 @@
-import React from 'react';
-import { PaperFilters as PaperFiltersType, Paper } from '../types/Paper';
+import React, { useState, useEffect } from 'react';
+import { PaperFilters as PaperFiltersType, Paper, Tag } from '../types/Paper';
+import { paperService } from '../services/paperService';
 
 interface PaperFiltersProps {
   filters: PaperFiltersType;
@@ -12,11 +13,39 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
   onFiltersChange,
   papers,
 }) => {
-  const handleFilterChange = (key: keyof PaperFiltersType, value: string | boolean) => {
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
+
+  useEffect(() => {
+    loadTags();
+  }, []);
+
+  const loadTags = async () => {
+    try {
+      setTagsLoading(true);
+      const tags = await paperService.getTags();
+      setAvailableTags(tags);
+    } catch (error) {
+      console.error('Error loading tags:', error);
+    } finally {
+      setTagsLoading(false);
+    }
+  };
+
+  const handleFilterChange = (key: keyof PaperFiltersType, value: string | boolean | number[]) => {
     onFiltersChange({
       ...filters,
       [key]: value,
     });
+  };
+
+  const handleTagToggle = (tagId: number) => {
+    const currentTags = filters.tags || [];
+    const newTags = currentTags.includes(tagId)
+      ? currentTags.filter(id => id !== tagId)
+      : [...currentTags, tagId];
+
+    handleFilterChange('tags', newTags);
   };
 
   const statusOptions = [
@@ -37,7 +66,8 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
   ).sort();
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Favoris
@@ -134,6 +164,53 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
           <option value="desc">Décroissant</option>
           <option value="asc">Croissant</option>
         </select>
+      </div>
+      </div>
+
+      {/* Section Tags séparée */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Filtrer par Tags
+        </label>
+        {tagsLoading ? (
+          <div className="text-sm text-gray-500">Chargement des tags...</div>
+        ) : availableTags.length === 0 ? (
+          <div className="text-sm text-gray-500">Aucun tag disponible</div>
+        ) : (
+          <div className="flex flex-wrap gap-3 max-h-32 overflow-y-auto p-1">
+            {availableTags.map((tag) => (
+              <button
+                key={tag.id}
+                onClick={() => handleTagToggle(tag.id)}
+                className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200 border ${
+                  filters.tags?.includes(tag.id)
+                    ? 'text-white shadow-sm scale-105'
+                    : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50 hover:scale-105'
+                }`}
+                style={{
+                  backgroundColor: filters.tags?.includes(tag.id) && tag.color ? tag.color : undefined,
+                  borderColor: tag.color || '#D1D5DB',
+                  ...(filters.tags?.includes(tag.id) ? {} : {
+                    backgroundColor: `${tag.color}10`, // 10% opacity pour l'arrière-plan non sélectionné
+                  })
+                }}
+                title={`Filtrer par ${tag.name}`}
+              >
+                {tag.color && (
+                  <div
+                    className={`w-2 h-2 rounded-full mr-2 ${
+                      filters.tags?.includes(tag.id) ? 'bg-white bg-opacity-80' : ''
+                    }`}
+                    style={{
+                      backgroundColor: filters.tags?.includes(tag.id) ? 'rgba(255,255,255,0.8)' : tag.color
+                    }}
+                  ></div>
+                )}
+                {tag.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
