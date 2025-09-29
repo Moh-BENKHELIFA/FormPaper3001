@@ -33,6 +33,29 @@ app.use('/uploads/extracted_images', express.static(path.join(__dirname, 'upload
   }
 }));
 
+// Serve extracted images from backend/uploads/extracted_images
+app.get('/api/extracted-images/:imageName', async (req, res) => {
+  try {
+    const { imageName } = req.params;
+
+    // Look for the image in the backend/uploads/extracted_images directory
+    const extractedImagePath = path.join(__dirname, 'uploads', 'extracted_images', imageName);
+
+    console.log(`🔍 Looking for image at: ${extractedImagePath}`);
+
+    if (await fs.pathExists(extractedImagePath)) {
+      console.log(`✅ Image found, serving: ${imageName}`);
+      res.sendFile(path.resolve(extractedImagePath));
+    } else {
+      console.log(`❌ Image not found: ${extractedImagePath}`);
+      res.status(404).json({ error: 'Image not found' });
+    }
+  } catch (error) {
+    console.error('Error serving extracted image:', error);
+    res.status(500).json({ error: 'Failed to serve image' });
+  }
+});
+
 // Servir l'image par défaut
 app.get('/api/default-image', (req, res) => {
   const defaultImagePath = path.join(__dirname, 'default_image.png');
@@ -284,6 +307,76 @@ app.post('/api/papers/extract-images', async (req, res) => {
   } catch (error) {
     console.error('Error extracting images:', error);
     res.status(500).json({ success: false, error: 'Failed to extract images' });
+  }
+});
+
+// Extract images from existing PDF without saving (for preview)
+app.post('/api/papers/:id/preview-extract-images', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find the article directory
+    const articleDir = await findArticleDir(id);
+    if (!articleDir) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    // Find PDF file
+    const files = await fs.readdir(articleDir);
+    const pdfFile = files.find(file => file.endsWith('.pdf') && file.includes(`_${id}.pdf`));
+
+    if (!pdfFile) {
+      return res.status(404).json({ error: 'PDF not found' });
+    }
+
+    const pdfPath = path.join(articleDir, pdfFile);
+
+    // Extract images from PDF
+    const images = await extractImagesFromPDF(pdfPath);
+
+    // Create backend/uploads/extracted_images directory if it doesn't exist
+    const extractedImagesDir = path.join(__dirname, 'uploads', 'extracted_images');
+    await fs.ensureDir(extractedImagesDir);
+
+    // Check which images are already saved and copy new ones to extracted_images
+    const savedImagesDir = path.join(articleDir, 'saved_images');
+    const newImages = [];
+
+    for (const imagePath of images.images) {
+      const imageFileName = path.basename(imagePath);
+      const savedImagePath = path.join(savedImagesDir, imageFileName);
+
+      // Only include if image doesn't already exist in saved_images
+      if (!await fs.pathExists(savedImagePath)) {
+        // Copy image to backend/uploads/extracted_images directory for preview
+        const extractedImagePath = path.join(extractedImagesDir, imageFileName);
+        const sourceImagePath = path.join(__dirname, imagePath);
+
+        if (await fs.pathExists(sourceImagePath)) {
+          await fs.copyFile(sourceImagePath, extractedImagePath);
+
+          // Create web-accessible path for the extracted image
+          const webPath = `/api/extracted-images/${imageFileName}`;
+          newImages.push(webPath);
+        }
+      }
+    }
+
+    console.log(`✅ ${newImages.length} new images found for preview`);
+
+    res.json({
+      success: true,
+      data: {
+        newImages: newImages,
+        totalExtracted: images.total,
+        newCount: newImages.length
+      },
+      message: `${newImages.length} nouvelles images trouvées`
+    });
+
+  } catch (error) {
+    console.error('Error extracting images from existing PDF:', error);
+    res.status(500).json({ error: 'Failed to extract images from PDF' });
   }
 });
 
@@ -652,8 +745,9 @@ async function extractImagesFromPDF(filePath) {
   return new Promise((resolve, reject) => {
     const pythonScript = path.join(__dirname, 'scripts', 'extract_images.py');
 
-    // Créer un dossier pour les images extraites
-    const extractedDir = path.join(path.dirname(filePath), 'extracted_images');
+    // Créer un dossier pour les images extraites dans backend/uploads
+    const extractedDir = path.join(__dirname, 'uploads', 'extracted_images');
+    await fs.ensureDir(extractedDir);
 
     const python = spawn('python', [pythonScript, filePath, extractedDir]);
 
@@ -751,6 +845,102 @@ app.get('/api/papers/:id/saved-images', async (req, res) => {
   } catch (error) {
     console.error('Error getting saved images:', error);
     res.status(500).json({ error: 'Failed to get saved images' });
+  }
+});
+
+// Delete saved image endpoint
+app.delete('/api/papers/:id/saved-images/:filename', async (req, res) => {
+  try {
+    const { id, filename } = req.params;
+
+    // Find the article directory
+    const articleDir = await findArticleDir(id);
+    if (!articleDir) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    const savedImagesDir = path.join(articleDir, 'saved_images');
+    const imagePath = path.join(savedImagesDir, filename);
+
+    // Check if image exists
+    if (!await fs.pathExists(imagePath)) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+
+    // Delete the image
+    await fs.remove(imagePath);
+    console.log(`✅ Saved image deleted: ${imagePath}`);
+
+    res.json({ success: true, message: 'Image deleted successfully' });
+
+  } catch (error) {
+    console.error('Error deleting saved image:', error);
+    res.status(500).json({ error: 'Failed to delete saved image' });
+  }
+});
+
+// Copy selected images from extracted_images to saved_images
+app.post('/api/papers/:id/copy-images', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { selectedImages } = req.body;
+
+    if (!selectedImages || !Array.isArray(selectedImages)) {
+      return res.status(400).json({ error: 'selectedImages array is required' });
+    }
+
+    // Find the article directory
+    const articleDir = await findArticleDir(id);
+    if (!articleDir) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    const extractedImagesDir = path.join(__dirname, 'uploads', 'extracted_images');
+    const savedImagesDir = path.join(articleDir, 'saved_images');
+
+    // Ensure saved_images directory exists
+    await fs.ensureDir(savedImagesDir);
+
+    let copiedCount = 0;
+    const errors = [];
+
+    for (const imageName of selectedImages) {
+      try {
+        const sourcePath = path.join(extractedImagesDir, imageName);
+        const destPath = path.join(savedImagesDir, imageName);
+
+        // Check if source exists
+        if (await fs.pathExists(sourcePath)) {
+          // Check if destination already exists
+          if (!await fs.pathExists(destPath)) {
+            await fs.copyFile(sourcePath, destPath);
+            copiedCount++;
+            console.log(`✅ Image copied: ${imageName}`);
+          } else {
+            console.log(`⚠️ Image already exists in saved_images: ${imageName}`);
+          }
+        } else {
+          errors.push(`Image not found: ${imageName}`);
+        }
+      } catch (error) {
+        errors.push(`Failed to copy ${imageName}: ${error.message}`);
+        console.error(`❌ Error copying image ${imageName}:`, error);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        copiedCount,
+        totalRequested: selectedImages.length,
+        errors
+      },
+      message: `${copiedCount} image(s) copiée(s) vers saved_images`
+    });
+
+  } catch (error) {
+    console.error('Error copying images:', error);
+    res.status(500).json({ error: 'Failed to copy images' });
   }
 });
 

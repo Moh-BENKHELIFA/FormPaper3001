@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Upload, Link, Loader2, Plus, X, Save, Settings, FileText, ExternalLink, Eye } from 'lucide-react';
+import { ArrowLeft, Upload, Link, Loader2, Plus, X, Save, Settings, FileText, ExternalLink, Eye, Trash2, ZoomIn } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -28,6 +28,13 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
   const [existingPDF, setExistingPDF] = useState<string | null>(null);
   const [savedImages, setSavedImages] = useState<Array<{ filename: string; url: string; path: string }>>([]);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [extractedImages, setExtractedImages] = useState<string[]>([]);
+  const [isLoadingExtractedImages, setIsLoadingExtractedImages] = useState(false);
+  const [selectedSavedImages, setSelectedSavedImages] = useState<Set<string>>(new Set());
+  const [imagesToDelete, setImagesToDelete] = useState<Set<string>>(new Set());
+  const [selectedExtractedImages, setSelectedExtractedImages] = useState<Set<string>>(new Set());
+  const [isExtractingImages, setIsExtractingImages] = useState(false);
+  const [isCopyingImages, setIsCopyingImages] = useState(false);
 
   // Form fields
   const [formData, setFormData] = useState({
@@ -198,6 +205,39 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
         }
       }
 
+      // Delete selected saved images first
+      if (imagesToDelete.size > 0) {
+        try {
+          for (const filename of imagesToDelete) {
+            await paperService.deleteSavedImage(paperId, filename);
+          }
+          showSuccess(`${imagesToDelete.size} image(s) supprimée(s)`);
+          setImagesToDelete(new Set());
+          await loadSavedImages();
+        } catch (deleteError) {
+          console.error('Error deleting images:', deleteError);
+          showError('Erreur lors de la suppression des images');
+        }
+      }
+
+      // Copy selected extracted images to saved_images
+      if (selectedExtractedImages.size > 0) {
+        try {
+          const result = await paperService.copyImagesToSaved(paperId, Array.from(selectedExtractedImages));
+          if (result.copiedCount > 0) {
+            showSuccess(`${result.copiedCount} image(s) sauvegardée(s)`);
+            // Clear extracted images after successful copy
+            setExtractedImages([]);
+            setSelectedExtractedImages(new Set());
+            // Reload saved images to show the new ones
+            await loadSavedImages();
+          }
+        } catch (imageError) {
+          console.error('Error copying images:', imageError);
+          showError('Erreur lors de la sauvegarde des images extraites');
+        }
+      }
+
       // Upload new PDF if provided
       if (selectedFile) {
         setIsUploadingPDF(true);
@@ -260,6 +300,105 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
     if (pdfFile) {
       setSelectedFile(pdfFile);
     }
+  };
+
+  const handleExtractImages = async () => {
+    if (!existingPDF) {
+      showError('Aucun PDF trouvé pour extraire les images');
+      return;
+    }
+
+    setIsExtractingImages(true);
+    try {
+      const result = await paperService.previewExtractImagesFromPDF(paperId);
+      setExtractedImages(result.newImages);
+      setSelectedExtractedImages(new Set()); // Reset selection
+      showSuccess(`${result.newCount} nouvelles images trouvées`);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erreur lors de l\'extraction des images');
+    } finally {
+      setIsExtractingImages(false);
+    }
+  };
+
+  const handleToggleSavedImage = (filename: string) => {
+    setSelectedSavedImages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(filename)) {
+        newSet.delete(filename);
+      } else {
+        newSet.add(filename);
+      }
+      return newSet;
+    });
+  };
+
+  const handleToggleExtractedImage = (imagePath: string) => {
+    const filename = imagePath.split('/').pop() || '';
+    setSelectedExtractedImages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(filename)) {
+        newSet.delete(filename);
+      } else {
+        newSet.add(filename);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllSaved = () => {
+    setSelectedSavedImages(new Set(savedImages.map(img => img.filename)));
+  };
+
+  const handleDeselectAllSaved = () => {
+    setSelectedSavedImages(new Set());
+  };
+
+  const handleSelectAllExtracted = () => {
+    const filenames = extractedImages.map(path => path.split('/').pop() || '');
+    setSelectedExtractedImages(new Set(filenames));
+  };
+
+  const handleDeselectAllExtracted = () => {
+    setSelectedExtractedImages(new Set());
+  };
+
+  const handleCopySelectedImages = async () => {
+    if (selectedExtractedImages.size === 0) {
+      showError('Aucune image sélectionnée');
+      return;
+    }
+
+    setIsCopyingImages(true);
+    try {
+      const result = await paperService.copyImagesToSaved(paperId, Array.from(selectedExtractedImages));
+      showSuccess(`${result.copiedCount} image(s) copiée(s) vers les images sauvegardées`);
+
+      // Reload saved images and clear extracted images
+      await loadSavedImages();
+      setExtractedImages([]);
+      setSelectedExtractedImages(new Set());
+
+      if (result.errors.length > 0) {
+        console.warn('Errors during copy:', result.errors);
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erreur lors de la copie des images');
+    } finally {
+      setIsCopyingImages(false);
+    }
+  };
+
+  const handleToggleImageForDeletion = (filename: string) => {
+    setImagesToDelete(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(filename)) {
+        newSet.delete(filename);
+      } else {
+        newSet.add(filename);
+      }
+      return newSet;
+    });
   };
 
   if (isLoading) {
@@ -488,6 +627,182 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                     </label>
                   </div>
                 </div>
+
+                {/* Images Management Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
+                    Gestion des Images
+                  </h3>
+
+                  {/* Section 1: Saved Images (from saved_images folder) */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Eye className="w-5 h-5 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">
+                        Images sauvegardées ({savedImages.length})
+                      </span>
+                    </div>
+
+                    {isLoadingImages ? (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 justify-center">
+                          <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                          <span className="text-sm text-blue-600">Chargement des images sauvegardées...</span>
+                        </div>
+                      </div>
+                    ) : savedImages.length > 0 ? (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="grid grid-cols-3 gap-3">
+                          {savedImages.map((image, index) => {
+                            const isMarkedForDeletion = imagesToDelete.has(image.filename);
+                            return (
+                              <div key={index} className="relative group">
+                                <img
+                                  src={image.url}
+                                  alt={`Image sauvegardée ${index + 1}`}
+                                  className={`w-full h-32 object-cover rounded border-2 cursor-pointer transition-all ${
+                                    isMarkedForDeletion
+                                      ? 'border-red-500 opacity-50 ring-2 ring-red-200'
+                                      : 'border-gray-300 hover:border-blue-400'
+                                  }`}
+                                  onClick={() => handleToggleImageForDeletion(image.filename)}
+                                />
+                                <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-sm px-2 py-1 rounded">
+                                  {index + 1}
+                                </div>
+                                <div className="absolute top-2 right-2 flex gap-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(image.url, '_blank');
+                                    }}
+                                    className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-600"
+                                  >
+                                    <ZoomIn className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleImageForDeletion(image.filename);
+                                    }}
+                                    className={`rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-all ${
+                                      isMarkedForDeletion
+                                        ? 'bg-red-600 text-white opacity-100'
+                                        : 'bg-red-500 text-white hover:bg-red-600'
+                                    }`}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                {isMarkedForDeletion && (
+                                  <div className="absolute inset-0 bg-red-500 bg-opacity-20 rounded border-2 border-red-500 flex items-center justify-center">
+                                    <div className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center">
+                                      <Trash2 className="w-4 h-4" />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {imagesToDelete.size > 0 && (
+                          <div className="mt-3 text-center text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                            {imagesToDelete.size} image(s) marquée(s) pour suppression - elles seront supprimées lors de l'enregistrement
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <Eye className="w-5 h-5" />
+                          <span className="text-sm">Aucune image sauvegardée</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Extract Images Button */}
+                  {existingPDF && (
+                    <div className="flex justify-center">
+                      <button
+                        onClick={handleExtractImages}
+                        disabled={isExtractingImages}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isExtractingImages ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                        {isExtractingImages ? 'Extraction en cours...' : 'Extraire les images du PDF'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Section 2: Newly Extracted Images */}
+                  {extractedImages.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Plus className="w-5 h-5 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">
+                            Nouvelles images extraites ({extractedImages.length})
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={selectedExtractedImages.size === extractedImages.length ? handleDeselectAllExtracted : handleSelectAllExtracted}
+                            className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                          >
+                            {selectedExtractedImages.size === extractedImages.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                          </button>
+                          {selectedExtractedImages.size > 0 && (
+                            <span className="text-xs text-green-600 self-center">
+                              {selectedExtractedImages.size} sélectionnée(s)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                          {extractedImages.map((imagePath, index) => {
+                            const filename = imagePath.split('/').pop() || '';
+                            return (
+                              <div key={index} className="relative group">
+                                <img
+                                  src={imagePath}
+                                  alt={`Nouvelle image ${index + 1}`}
+                                  className={`w-full h-32 object-cover rounded border-2 cursor-pointer transition-all ${
+                                    selectedExtractedImages.has(filename)
+                                      ? 'border-green-500 ring-2 ring-green-200'
+                                      : 'border-transparent hover:border-green-400'
+                                  }`}
+                                  onClick={() => handleToggleExtractedImage(imagePath)}
+                                />
+                                {selectedExtractedImages.has(filename) && (
+                                  <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">
+                                    ✓
+                                  </div>
+                                )}
+                                <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-sm px-2 py-1 rounded">
+                                  {index + 1}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Info message about saving */}
+                        {selectedExtractedImages.size > 0 && (
+                          <div className="text-center text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+                            {selectedExtractedImages.size} image(s) sélectionnée(s) - elles seront sauvegardées lors de l'enregistrement
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -637,49 +952,6 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                   </div>
                 )}
 
-                {/* Saved Images */}
-                {isLoadingImages ? (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center gap-2 justify-center">
-                      <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                      <span className="text-sm text-blue-600">Chargement des images...</span>
-                    </div>
-                  </div>
-                ) : savedImages.length > 0 ? (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Eye className="w-5 h-5 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-800">
-                        Images extraites ({savedImages.length})
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                      {savedImages.map((image, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={image.url}
-                            alt={`Image ${index + 1}`}
-                            className="w-full h-20 object-cover rounded border hover:border-blue-400 cursor-pointer transition-all"
-                            onClick={() => window.open(image.url, '_blank')}
-                          />
-                          <div className="absolute bottom-1 right-1 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 rounded">
-                            {index + 1}
-                          </div>
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded flex items-center justify-center">
-                            <ExternalLink className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : existingPDF && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <Eye className="w-5 h-5" />
-                      <span className="text-sm">Aucune image extraite pour ce PDF</span>
-                    </div>
-                  </div>
-                )}
 
                 {/* Upload New PDF */}
                 <div>

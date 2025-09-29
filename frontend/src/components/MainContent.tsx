@@ -298,7 +298,7 @@ const MainContent: React.FC<MainContentProps> = ({
         <PaperCard
           key={paper.id}
           paper={paper}
-          onStatusChange={onPaperUpdate ? () => {} : onPapersChange}
+          onStatusChange={onPapersChange}
           onPaperUpdate={onPaperUpdate}
           onStatsUpdate={onStatsUpdate}
         />
@@ -389,7 +389,7 @@ const MainContent: React.FC<MainContentProps> = ({
             key={paper.id}
             paper={paper}
             onPaperUpdate={onPaperUpdate}
-            onStatusChange={onPaperUpdate ? () => {} : onPapersChange}
+            onStatusChange={onPapersChange}
             onStatsUpdate={onStatsUpdate}
           />
         ))}

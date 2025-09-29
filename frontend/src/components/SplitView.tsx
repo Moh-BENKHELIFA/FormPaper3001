@@ -25,6 +25,12 @@ const SplitView: React.FC<SplitViewProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef<number>(0);
   const startSplitRef = useRef<number>(0);
+  const animationFrameRef = useRef<number | null>(null);
+
+  // Sync with defaultSplitPercentage prop changes
+  useEffect(() => {
+    setSplitPercentage(defaultSplitPercentage);
+  }, [defaultSplitPercentage]);
 
   const handleMouseDown = useCallback((event: React.MouseEvent) => {
     setIsDragging(true);
@@ -38,25 +44,35 @@ const SplitView: React.FC<SplitViewProps> = ({
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!isDragging || !containerRef.current) return;
 
-    event.preventDefault();
-    event.stopPropagation();
+    // Cancel any pending animation frame
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
 
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const containerWidth = containerRect.width;
-    const deltaX = event.clientX - startXRef.current;
-    const deltaPercentage = (deltaX / containerWidth) * 100;
+    // Use requestAnimationFrame for smooth performance
+    animationFrameRef.current = requestAnimationFrame(() => {
+      if (!containerRef.current) return;
 
-    let newSplit = startSplitRef.current + deltaPercentage;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const containerWidth = containerRect.width;
 
-    // Calculate minimum percentages based on pixel values
-    const minLeftPercentage = (minLeftWidth / containerWidth) * 100;
-    const minRightPercentage = (minRightWidth / containerWidth) * 100;
+      // Calculate mouse position relative to container
+      const mouseX = event.clientX - containerRect.left;
+      const newSplitPercentage = (mouseX / containerWidth) * 100;
 
-    // Constrain the split percentage
-    newSplit = Math.max(minLeftPercentage, Math.min(100 - minRightPercentage, newSplit));
+      // Calculate minimum percentages based on pixel values
+      const minLeftPercentage = (minLeftWidth / containerWidth) * 100;
+      const minRightPercentage = (minRightWidth / containerWidth) * 100;
 
-    setSplitPercentage(newSplit);
-    onSplitChange?.(newSplit);
+      // Constrain the split percentage
+      const constrainedSplit = Math.max(
+        minLeftPercentage,
+        Math.min(100 - minRightPercentage, newSplitPercentage)
+      );
+
+      setSplitPercentage(constrainedSplit);
+      onSplitChange?.(constrainedSplit);
+    });
   }, [isDragging, minLeftWidth, minRightWidth, onSplitChange]);
 
   const handleMouseUp = useCallback((event?: MouseEvent) => {
@@ -64,6 +80,13 @@ const SplitView: React.FC<SplitViewProps> = ({
       event.preventDefault();
       event.stopPropagation();
     }
+
+    // Cancel any pending animation frame
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
     setIsDragging(false);
   }, []);
 
@@ -73,8 +96,8 @@ const SplitView: React.FC<SplitViewProps> = ({
       const handleMouseUpGlobal = (e: MouseEvent) => handleMouseUp(e);
 
       // Ajouter les écouteurs avec options pour une meilleure performance
-      document.addEventListener('mousemove', handleMouseMoveGlobal, { passive: false });
-      document.addEventListener('mouseup', handleMouseUpGlobal, { passive: false });
+      document.addEventListener('mousemove', handleMouseMoveGlobal, { passive: true });
+      document.addEventListener('mouseup', handleMouseUpGlobal, { passive: true });
 
       // Ajouter des écouteurs pour les cas où la souris sort de la fenêtre
       document.addEventListener('mouseleave', handleMouseUpGlobal);
@@ -82,7 +105,8 @@ const SplitView: React.FC<SplitViewProps> = ({
 
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
-      // Ne pas désactiver les pointer events pour permettre le scroll
+      document.body.style.pointerEvents = 'none';
+      // Prevent text selection globally during drag
 
       return () => {
         document.removeEventListener('mousemove', handleMouseMoveGlobal);
@@ -91,6 +115,7 @@ const SplitView: React.FC<SplitViewProps> = ({
         window.removeEventListener('blur', handleMouseUpGlobal);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
+        document.body.style.pointerEvents = '';
       };
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);

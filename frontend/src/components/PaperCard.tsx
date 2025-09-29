@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Heart, BookOpen, CheckCircle, Tag as TagIcon, Trash2 } from 'lucide-react';
+import { Eye, Heart, BookOpen, CheckCircle, Tag as TagIcon, Trash2, ExternalLink } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -450,6 +450,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
             <span>{statusOptions.find(opt => opt.value === localPaper.reading_status)?.label}</span>
           </div>
         </div>
+
       </div>
 
       {/* Contenu de la carte */}
@@ -480,34 +481,50 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
           {renderTags()}
         </div>
 
-        {/* Boutons de changement de statut */}
-        <div className="flex space-x-1 pt-2 border-t border-gray-100">
-          {statusOptions.map((status) => (
-            <button
-              key={status.value}
-              onClick={(e) => handleStatusChange(status.value, e)}
-              disabled={isUpdating}
-              className={`p-2 rounded-full transition-all duration-200 ${
-                localPaper.reading_status === status.value
-                  ? 'shadow-sm scale-105'
-                  : 'hover:scale-105 opacity-60 hover:opacity-100'
-              }`}
-              style={{
-                backgroundColor: localPaper.reading_status === status.value
-                  ? getStatusColor(status.value) + '30'
-                  : 'rgba(255,255,255,0.8)',
-                color: getStatusColor(status.value),
-                border: localPaper.reading_status === status.value
-                  ? `2px solid ${getStatusColor(status.value)}`
-                  : '2px solid transparent'
-              }}
-              title={status.label}
+        {/* Boutons de changement de statut et DOI */}
+        <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+          <div className="flex space-x-1">
+            {statusOptions.map((status) => (
+              <button
+                key={status.value}
+                onClick={(e) => handleStatusChange(status.value, e)}
+                disabled={isUpdating}
+                className={`p-2 rounded-full transition-all duration-200 ${
+                  localPaper.reading_status === status.value
+                    ? 'shadow-sm scale-105'
+                    : 'hover:scale-105 opacity-60 hover:opacity-100'
+                }`}
+                style={{
+                  backgroundColor: localPaper.reading_status === status.value
+                    ? getStatusColor(status.value) + '30'
+                    : 'rgba(255,255,255,0.8)',
+                  color: getStatusColor(status.value),
+                  border: localPaper.reading_status === status.value
+                    ? `2px solid ${getStatusColor(status.value)}`
+                    : '2px solid transparent'
+                }}
+                title={status.label}
+              >
+                {React.createElement(status.icon, {
+                  className: `w-4 h-4`
+                })}
+              </button>
+            ))}
+          </div>
+
+          {/* DOI en bas à droite */}
+          {localPaper.doi && (
+            <a
+              href={localPaper.url || `https://doi.org/${localPaper.doi}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs text-blue-600 hover:text-blue-800 underline max-w-[120px] truncate"
+              title={`DOI: ${localPaper.doi}`}
             >
-              {React.createElement(status.icon, {
-                className: `w-4 h-4`
-              })}
-            </button>
-          ))}
+              {localPaper.doi}
+            </a>
+          )}
         </div>
       </div>
     </div>

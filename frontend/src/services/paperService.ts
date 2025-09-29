@@ -293,4 +293,34 @@ export const paperService = {
     const response = await api.get<APIResponse<{ images: Array<{ filename: string; url: string; path: string }>; total: number }>>(`/papers/${paperId}/saved-images`);
     return response.data.data || { images: [], total: 0 };
   },
+
+  async copyImagesToSaved(paperId: number, selectedImages: string[]): Promise<{ copiedCount: number; totalRequested: number; errors: string[] }> {
+    const response = await api.post<APIResponse<{ copiedCount: number; totalRequested: number; errors: string[] }>>(`/papers/${paperId}/copy-images`, {
+      selectedImages
+    });
+    if (!response.data.data) {
+      throw new Error(response.data.error || 'Failed to copy images');
+    }
+    return response.data.data;
+  },
+
+  async previewExtractImagesFromPDF(paperId: number): Promise<{ newImages: string[]; totalExtracted: number; newCount: number; message: string }> {
+    const response = await api.post<APIResponse<{ newImages: string[]; totalExtracted: number; newCount: number }>>(`/papers/${paperId}/preview-extract-images`);
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to preview extract images from PDF');
+    }
+    return {
+      newImages: response.data.data?.newImages || [],
+      totalExtracted: response.data.data?.totalExtracted || 0,
+      newCount: response.data.data?.newCount || 0,
+      message: response.data.message || 'No new images found'
+    };
+  },
+
+  async deleteSavedImage(paperId: number, filename: string): Promise<void> {
+    const response = await api.delete<APIResponse<void>>(`/papers/${paperId}/saved-images/${filename}`);
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to delete saved image');
+    }
+  },
 };
