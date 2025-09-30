@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { PaperStats, Tag } from '../types/Paper';
 import { paperService } from '../services/paperService';
 import Sidebar from './Sidebar';
@@ -9,6 +10,7 @@ import Modal from './Modal';
 const Settings: React.FC = () => {
   const { goToHome } = useNavigation();
   const { success, error } = useToast();
+  const { theme, setTheme } = useTheme();
   const [activeSection, setActiveSection] = useState<'general' | 'tags' | 'integrations' | 'ai'>('general');
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -393,22 +395,33 @@ const Settings: React.FC = () => {
   const renderGeneralSettings = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Apparence</h3>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Apparence</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-sm font-medium text-gray-900">Thème</h4>
-              <p className="text-sm text-gray-500">Choisissez le thème de l'application</p>
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Thème</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-500">Choisissez le thème de l'application</p>
             </div>
             <div className="flex space-x-2">
-              <button className="px-3 py-1 text-xs rounded bg-blue-100 text-blue-700 border">
+              <button
+                onClick={() => setTheme('light')}
+                className={`px-4 py-2 text-sm rounded border transition-colors ${
+                  theme === 'light'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                }`}
+              >
                 Clair
               </button>
-              <button className="px-3 py-1 text-xs rounded bg-gray-100 text-gray-700 border">
+              <button
+                onClick={() => setTheme('dark')}
+                className={`px-4 py-2 text-sm rounded border transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                }`}
+              >
                 Sombre
-              </button>
-              <button className="px-3 py-1 text-xs rounded bg-gray-100 text-gray-700 border">
-                Auto
               </button>
             </div>
           </div>
@@ -416,14 +429,14 @@ const Settings: React.FC = () => {
       </div>
 
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Préférences</h3>
-        <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Préférences</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-sm font-medium text-gray-900">Mode d'affichage par défaut</h4>
-              <p className="text-sm text-gray-500">Choisissez la vue par défaut pour les articles</p>
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Mode d'affichage par défaut</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-500">Choisissez la vue par défaut pour les articles</p>
             </div>
-            <select className="px-3 py-1 text-sm border border-gray-300 rounded">
+            <select className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
               <option value="grid">Grille</option>
               <option value="list">Liste</option>
               <option value="table">Tableau</option>
@@ -432,8 +445,8 @@ const Settings: React.FC = () => {
 
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-sm font-medium text-gray-900">Création automatique de dossiers</h4>
-              <p className="text-sm text-gray-500">Créer automatiquement des dossiers pour chaque article</p>
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Création automatique de dossiers</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-500">Créer automatiquement des dossiers pour chaque article</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -444,8 +457,8 @@ const Settings: React.FC = () => {
       </div>
 
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Zone de Danger</h3>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Zone de Danger</h3>
+        <div className="bg-red-50 dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded-lg p-4">
           <div className="flex items-start space-x-3">
             <div className="flex-shrink-0">
               <span className="text-2xl">⚠️</span>
@@ -453,8 +466,8 @@ const Settings: React.FC = () => {
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-medium text-red-900">Réinitialiser la base de données</h4>
-                  <p className="text-sm text-red-700 mt-1">
+                  <h4 className="text-sm font-medium text-red-900 dark:text-red-400">Réinitialiser la base de données</h4>
+                  <p className="text-sm text-red-700 dark:text-red-400 mt-1">
                     Supprime définitivement tous les articles, catégories, tags et données de la base.
                     Cette action est irréversible.
                   </p>
@@ -476,11 +489,11 @@ const Settings: React.FC = () => {
   const renderTagsSettings = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Gestion des Tags</h3>
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Gestion des Tags</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex justify-between items-center">
-              <h4 className="text-sm font-medium text-gray-900">Tags existants ({tags.length})</h4>
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Tags existants ({tags.length})</h4>
               <button
                 onClick={openCreateTagModal}
                 className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
@@ -492,25 +505,25 @@ const Settings: React.FC = () => {
 
           <div className="p-4">
             {isLoading ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-500">
                 <p>Chargement des tags...</p>
               </div>
             ) : tags.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-500">
                 <p>Aucun tag créé</p>
                 <p className="text-sm mt-2">Créez votre premier tag pour organiser vos articles</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {tags.map((tag) => (
-                  <div key={tag.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <div key={tag.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
                     <div className="flex items-center space-x-3">
                       <div
                         className="w-4 h-4 rounded-full"
                         style={{ backgroundColor: tag.color }}
                       ></div>
-                      <span className="text-sm font-medium text-gray-900">{tag.name}</span>
-                      <span className="text-xs text-gray-500">#{tag.id}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{tag.name}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-500">#{tag.id}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <button
@@ -539,27 +552,27 @@ const Settings: React.FC = () => {
   const renderIntegrationsSettings = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Intégrations</h3>
-        <div className="bg-white rounded-lg border border-gray-200">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Intégrations</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-red-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
                   <span className="text-xl">📚</span>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900">Zotero</h4>
-                  <p className="text-sm text-gray-500">Synchroniser avec votre bibliothèque Zotero</p>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Zotero</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-500">Synchroniser avec votre bibliothèque Zotero</p>
                 </div>
               </div>
-              <button className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 border">
+              <button className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600">
                 Configurer
               </button>
             </div>
           </div>
 
           <div className="px-4 pb-4">
-            <div className="text-center py-4 text-gray-500 bg-gray-50 rounded">
+            <div className="text-center py-4 text-gray-500 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 rounded">
               <p>Intégration Zotero en cours de développement</p>
               <p className="text-sm mt-1">Bientôt disponible pour importer/exporter vos articles</p>
             </div>
@@ -573,18 +586,18 @@ const Settings: React.FC = () => {
     <div className="space-y-6">
       {/* Statut Ollama */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Configuration Ollama</h3>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Configuration Ollama</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                ollamaStatus.running ? 'bg-green-100' : ollamaStatus.installed ? 'bg-yellow-100' : 'bg-red-100'
+                ollamaStatus.running ? 'bg-green-100 dark:bg-green-900' : ollamaStatus.installed ? 'bg-yellow-100 dark:bg-yellow-900' : 'bg-red-100 dark:bg-red-900'
               }`}>
                 <span className="text-xl">🤖</span>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-gray-900">Ollama</h4>
-                <p className="text-sm text-gray-500">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Ollama</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-500">
                   {!ollamaStatus.installed
                     ? 'Non installé'
                     : ollamaStatus.running
@@ -601,7 +614,7 @@ const Settings: React.FC = () => {
               <button
                 onClick={loadOllamaData}
                 disabled={isLoadingAI}
-                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 border"
+                className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 border border-blue-200 dark:border-blue-700"
               >
                 {isLoadingAI ? 'Vérification...' : 'Actualiser'}
               </button>
@@ -609,9 +622,9 @@ const Settings: React.FC = () => {
           </div>
 
           {!ollamaStatus.installed && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <h5 className="text-sm font-medium text-yellow-800 mb-2">Installation requise</h5>
-              <p className="text-sm text-yellow-700 mb-3">
+            <div className="bg-yellow-50 dark:bg-gray-800 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
+              <h5 className="text-sm font-medium text-yellow-800 dark:text-yellow-400 mb-2">Installation requise</h5>
+              <p className="text-sm text-yellow-700 dark:text-yellow-400 mb-3">
                 Ollama n'est pas installé sur ce système. Téléchargez-le depuis le site officiel.
               </p>
               <a
@@ -626,12 +639,12 @@ const Settings: React.FC = () => {
           )}
 
           {ollamaStatus.installed && !ollamaStatus.running && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h5 className="text-sm font-medium text-blue-800 mb-2">Démarrage nécessaire</h5>
-              <p className="text-sm text-blue-700 mb-3">
+            <div className="bg-blue-50 dark:bg-gray-800 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+              <h5 className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">Démarrage nécessaire</h5>
+              <p className="text-sm text-blue-700 dark:text-blue-400 mb-3">
                 Ollama est installé mais n'est pas en cours d'exécution. Démarrez-le depuis votre terminal avec :
               </p>
-              <code className="block bg-gray-100 rounded px-2 py-1 text-sm font-mono">ollama serve</code>
+              <code className="block bg-gray-100 dark:bg-gray-700 rounded px-2 py-1 text-sm font-mono text-gray-900 dark:text-gray-100">ollama serve</code>
             </div>
           )}
         </div>
@@ -641,7 +654,7 @@ const Settings: React.FC = () => {
       {ollamaStatus.running && (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Modèles disponibles</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Modèles disponibles</h3>
             <button
               onClick={handleOpenModelSearch}
               className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
@@ -650,15 +663,15 @@ const Settings: React.FC = () => {
               <span>Rechercher plus de modèles</span>
             </button>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200">
-            <div className="p-4 border-b border-gray-200">
-              <h4 className="text-sm font-medium text-gray-900">Modèles recommandés</h4>
-              <p className="text-sm text-gray-500 mt-1">Choisissez et téléchargez les modèles adaptés à votre matériel</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Modèles recommandés</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Choisissez et téléchargez les modèles adaptés à votre matériel</p>
             </div>
 
             <div className="p-4 space-y-4">
               {isLoadingAI ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-gray-500 dark:text-gray-500">
                   <p>Chargement des modèles...</p>
                 </div>
               ) : (
@@ -667,23 +680,23 @@ const Settings: React.FC = () => {
                   const isDownloading = downloadingModel === model.name;
 
                   return (
-                    <div key={model.name} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div key={model.name} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3">
                           <div className={`w-3 h-3 rounded-full ${
-                            isInstalled ? 'bg-green-500' : 'bg-gray-300'
+                            isInstalled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
                           }`}></div>
                           <div>
-                            <h5 className="text-sm font-medium text-gray-900 flex items-center space-x-2">
+                            <h5 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
                               <span>{model.name}</span>
                               {model.recommended && (
-                                <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                                <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
                                   Recommandé
                                 </span>
                               )}
                             </h5>
-                            <p className="text-sm text-gray-500">{model.description}</p>
-                            <p className="text-xs text-gray-400">Taille: {model.size}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-500">{model.description}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-400">Taille: {model.size}</p>
                           </div>
                         </div>
                       </div>
@@ -728,17 +741,17 @@ const Settings: React.FC = () => {
       {/* Modèles installés */}
       {ollamaStatus.running && installedModels.length > 0 && (
         <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Modèles installés ({installedModels.length})</h3>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Modèles installés ({installedModels.length})</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <div className="space-y-3">
               {installedModels.map((model) => (
-                <div key={model.name} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div key={model.name} className="flex items-center justify-between p-3 bg-green-50 dark:bg-gray-700 border border-green-200 dark:border-green-700 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 rounded-full bg-green-500"></div>
                     <div>
-                      <h5 className="text-sm font-medium text-gray-900">{model.name}</h5>
+                      <h5 className="text-sm font-medium text-gray-900 dark:text-gray-100">{model.name}</h5>
                       {model.size && (
-                        <p className="text-xs text-gray-500">Taille: {Math.round(model.size / (1024 * 1024 * 1024) * 10) / 10} GB</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500">Taille: {Math.round(model.size / (1024 * 1024 * 1024) * 10) / 10} GB</p>
                       )}
                     </div>
                   </div>
@@ -768,16 +781,16 @@ const Settings: React.FC = () => {
       {/* Tutorial d'utilisation */}
       {ollamaStatus.running && installedModels.length > 0 && (
         <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">🎓 Comment utiliser l'IA</h3>
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 p-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">🎓 Comment utiliser l'IA</h3>
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-800 rounded-lg border border-blue-200 dark:border-gray-700 p-6">
             <div className="space-y-4">
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-bold text-sm">1</span>
+                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 dark:text-blue-300 font-bold text-sm">1</span>
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-1">📄 Ouvrir un article</h4>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">📄 Ouvrir un article</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     Dans la liste des articles, cliquez sur un paper pour ouvrir ses notes.
                     L'IA pourra analyser le contenu du PDF automatiquement.
                   </p>
@@ -785,12 +798,12 @@ const Settings: React.FC = () => {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <span className="text-purple-600 font-bold text-sm">2</span>
+                <div className="flex-shrink-0 w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
+                  <span className="text-purple-600 dark:text-purple-300 font-bold text-sm">2</span>
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-1">💬 Utiliser le chat IA</h4>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">💬 Utiliser le chat IA</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     Dans la page de notes, vous trouverez un bouton "Chat IA" qui ouvre une interface
                     pour poser des questions sur l'article.
                   </p>
@@ -798,12 +811,12 @@ const Settings: React.FC = () => {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-green-600 font-bold text-sm">3</span>
+                <div className="flex-shrink-0 w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                  <span className="text-green-600 dark:text-green-300 font-bold text-sm">3</span>
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-1">🤖 Exemples de questions</h4>
-                  <div className="text-sm text-gray-600 space-y-1">
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">🤖 Exemples de questions</h4>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                     <p>• "Peux-tu me résumer cet article en 3 points clés ?"</p>
                     <p>• "Quelles sont les principales contributions de cette recherche ?"</p>
                     <p>• "Explique-moi la méthodologie utilisée"</p>
@@ -813,12 +826,12 @@ const Settings: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg p-4 border border-blue-200">
+              <div className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-blue-200 dark:border-gray-600">
                 <div className="flex items-center space-x-2 mb-2">
                   <span className="text-lg">💡</span>
-                  <h5 className="font-medium text-gray-900">Conseils pour de meilleurs résultats</h5>
+                  <h5 className="font-medium text-gray-900 dark:text-gray-100">Conseils pour de meilleurs résultats</h5>
                 </div>
-                <ul className="text-sm text-gray-600 space-y-1 ml-6">
+                <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 ml-6">
                   <li>• Soyez spécifique dans vos questions</li>
                   <li>• Demandez des clarifications si nécessaire</li>
                   <li>• L'IA a accès à tout le contenu du PDF</li>
@@ -827,12 +840,12 @@ const Settings: React.FC = () => {
                 </ul>
               </div>
 
-              <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+              <div className="bg-yellow-50 dark:bg-gray-700 rounded-lg p-4 border border-yellow-200 dark:border-yellow-700">
                 <div className="flex items-center space-x-2 mb-2">
                   <span className="text-lg">⚠️</span>
-                  <h5 className="font-medium text-yellow-800">Limitations importantes</h5>
+                  <h5 className="font-medium text-yellow-800 dark:text-yellow-400">Limitations importantes</h5>
                 </div>
-                <ul className="text-sm text-yellow-700 space-y-1 ml-6">
+                <ul className="text-sm text-yellow-700 dark:text-yellow-400 space-y-1 ml-6">
                   <li>• L'IA peut parfois faire des erreurs d'interprétation</li>
                   <li>• Vérifiez toujours les informations critiques dans le PDF original</li>
                   <li>• Les réponses dépendent de la qualité de l'extraction du texte</li>
@@ -841,10 +854,10 @@ const Settings: React.FC = () => {
               </div>
 
               <div className="text-center pt-4">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-500">
                   L'interface de chat IA sera bientôt disponible dans les pages d'articles ! 🚀
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">
                   Modèle actuel : {installedModels.length > 0 ? installedModels[0].name : 'Aucun'} |
                   Statut : {ollamaStatus.running ? '🟢 Actif' : '🔴 Arrêté'}
                 </p>
@@ -858,7 +871,7 @@ const Settings: React.FC = () => {
 
   const renderColorPicker = () => (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">Couleur</label>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Couleur</label>
       <div className="grid grid-cols-6 gap-2 mb-3">
         {predefinedColors.map((color) => (
           <button
@@ -866,7 +879,7 @@ const Settings: React.FC = () => {
             type="button"
             onClick={() => setTagColor(color)}
             className={`w-8 h-8 rounded-full border-2 ${
-              tagColor === color ? 'border-gray-800' : 'border-gray-300'
+              tagColor === color ? 'border-gray-800 dark:border-gray-300' : 'border-gray-300 dark:border-gray-700'
             } transition-all hover:scale-110`}
             style={{ backgroundColor: color }}
           />
@@ -876,23 +889,23 @@ const Settings: React.FC = () => {
         type="color"
         value={tagColor}
         onChange={(e) => setTagColor(e.target.value)}
-        className="w-full h-10 rounded border border-gray-300"
+        className="w-full h-10 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
       />
     </div>
   );
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar stats={emptyStats} />
 
       <div className="flex-1 flex flex-col">
         {/* Simple header for Settings page */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900">Paramètres</h1>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Paramètres</h1>
             <button
               onClick={goToHome}
-              className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <span>←</span>
               <span>Retour à l'accueil</span>
@@ -902,9 +915,9 @@ const Settings: React.FC = () => {
 
         <div className="flex-1 flex">
           {/* Settings Sidebar */}
-          <div className="w-64 bg-white border-r border-gray-200">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Paramètres</h2>
+          <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Paramètres</h2>
             </div>
 
             <nav className="p-4 space-y-1">
@@ -914,8 +927,8 @@ const Settings: React.FC = () => {
                   onClick={() => setActiveSection(item.id as any)}
                   className={`w-full flex items-center space-x-3 px-3 py-2 text-sm rounded-lg transition-colors ${
                     activeSection === item.id
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   <span>{item.icon}</span>
@@ -926,10 +939,10 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Settings Content */}
-          <div className="flex-1 p-6">
+          <div className="flex-1 p-6 bg-gray-50 dark:bg-gray-900">
             <div className="max-w-4xl">
               <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                   {menuItems.find(item => item.id === activeSection)?.label}
                 </h1>
               </div>
@@ -951,12 +964,12 @@ const Settings: React.FC = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Nom du tag</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nom du tag</label>
             <input
               type="text"
               value={tagName}
               onChange={(e) => setTagName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="Entrez le nom du tag"
               autoFocus
             />
@@ -964,12 +977,12 @@ const Settings: React.FC = () => {
 
           {renderColorPicker()}
 
-          <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
             <div
               className="w-6 h-6 rounded-full"
               style={{ backgroundColor: tagColor }}
             ></div>
-            <span className="text-sm text-gray-700">Aperçu: </span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">Aperçu: </span>
             <span
               className="px-2 py-1 text-xs rounded-full text-white"
               style={{ backgroundColor: tagColor }}
@@ -981,7 +994,7 @@ const Settings: React.FC = () => {
           <div className="flex justify-end space-x-3 pt-4">
             <button
               onClick={() => setShowCreateTagModal(false)}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
             >
               Annuler
             </button>
@@ -1056,13 +1069,13 @@ const Settings: React.FC = () => {
         title="Supprimer le tag"
       >
         <div className="space-y-4">
-          <p className="text-gray-700">
+          <p className="text-gray-700 dark:text-gray-300">
             Êtes-vous sûr de vouloir supprimer le tag{' '}
             <span className="font-medium">"{selectedTag?.name}"</span> ?
           </p>
 
           {selectedTag && (
-            <div className="flex items-center space-x-2 p-3 bg-red-50 rounded-lg">
+            <div className="flex items-center space-x-2 p-3 bg-red-50 dark:bg-gray-800 rounded-lg">
               <div
                 className="w-4 h-4 rounded-full"
                 style={{ backgroundColor: selectedTag.color }}
@@ -1076,14 +1089,14 @@ const Settings: React.FC = () => {
             </div>
           )}
 
-          <p className="text-sm text-red-600">
+          <p className="text-sm text-red-600 dark:text-red-400">
             ⚠️ Cette action est irréversible. Le tag sera retiré de tous les articles associés.
           </p>
 
           <div className="flex justify-end space-x-3 pt-4">
             <button
               onClick={() => setShowDeleteTagModal(false)}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
             >
               Annuler
             </button>
@@ -1104,33 +1117,33 @@ const Settings: React.FC = () => {
         title="⚠️ Réinitialiser la base de données"
       >
         <div className="space-y-4">
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800 font-medium mb-2">
+          <div className="p-4 bg-red-50 dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded-lg">
+            <p className="text-red-800 dark:text-red-400 font-medium mb-2">
               ⚠️ ATTENTION : Cette action est irréversible !
             </p>
-            <p className="text-red-700 text-sm">
+            <p className="text-red-700 dark:text-red-400 text-sm">
               Vous êtes sur le point de supprimer définitivement :
             </p>
-            <ul className="text-red-700 text-sm mt-2 ml-4 space-y-1">
+            <ul className="text-red-700 dark:text-red-400 text-sm mt-2 ml-4 space-y-1">
               <li>• Tous les articles de recherche</li>
               <li>• Toutes les catégories et tags</li>
               <li>• Toutes les données associées</li>
               <li>• Tous les fichiers PDF et images</li>
             </ul>
-            <p className="text-red-700 text-sm mt-2 font-medium">
+            <p className="text-red-700 dark:text-red-400 text-sm mt-2 font-medium">
               Cette action ne peut pas être annulée.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Pour confirmer, tapez "RESET" dans le champ ci-dessous :
             </label>
             <input
               type="text"
               value={resetConfirmationText}
               onChange={(e) => setResetConfirmationText(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="Tapez RESET pour confirmer"
               autoFocus
             />
@@ -1139,7 +1152,7 @@ const Settings: React.FC = () => {
           <div className="flex justify-end space-x-3 pt-4">
             <button
               onClick={() => setShowResetDatabaseModal(false)}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
               disabled={isLoading}
             >
               Annuler
@@ -1163,7 +1176,7 @@ const Settings: React.FC = () => {
       >
         <div className="space-y-4 max-h-96 flex flex-col">
           {/* Barre de recherche */}
-          <div className="sticky top-0 bg-white">
+          <div className="sticky top-0 bg-white dark:bg-gray-800">
             <input
               type="text"
               value={searchQuery}
@@ -1172,18 +1185,18 @@ const Settings: React.FC = () => {
                 handleSearchInputChange(e.target.value);
               }}
               placeholder="Rechercher par nom, description, ou catégorie..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               autoFocus
             />
             {isSearching && (
-              <div className="text-sm text-gray-500 mt-2">Recherche en cours...</div>
+              <div className="text-sm text-gray-500 dark:text-gray-500 mt-2">Recherche en cours...</div>
             )}
           </div>
 
           {/* Résultats de recherche */}
           <div className="flex-1 overflow-y-auto space-y-3">
             {searchResults.length === 0 && !isSearching ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-500">
                 <p>Aucun modèle trouvé</p>
                 <p className="text-sm mt-1">Essayez avec d'autres termes de recherche</p>
               </div>
@@ -1194,42 +1207,42 @@ const Settings: React.FC = () => {
 
                 // Couleurs par catégorie
                 const categoryColors: { [key: string]: string } = {
-                  'LLaMA': 'bg-blue-100 text-blue-800',
-                  'Mistral': 'bg-purple-100 text-purple-800',
-                  'Phi': 'bg-green-100 text-green-800',
-                  'Qwen': 'bg-orange-100 text-orange-800',
-                  'Code': 'bg-red-100 text-red-800',
-                  'Gemma': 'bg-indigo-100 text-indigo-800',
-                  'Vision': 'bg-pink-100 text-pink-800',
-                  'Embedding': 'bg-gray-100 text-gray-800',
-                  'Chat': 'bg-yellow-100 text-yellow-800',
-                  'Uncensored': 'bg-red-100 text-red-800',
-                  'Reasoning': 'bg-teal-100 text-teal-800',
-                  'Dolphin': 'bg-cyan-100 text-cyan-800',
+                  'LLaMA': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+                  'Mistral': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+                  'Phi': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                  'Qwen': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
+                  'Code': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+                  'Gemma': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
+                  'Vision': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300',
+                  'Embedding': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+                  'Chat': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                  'Uncensored': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+                  'Reasoning': 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300',
+                  'Dolphin': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300',
                 };
 
                 return (
-                  <div key={model.name} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                  <div key={model.name} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
                           <div className={`w-3 h-3 rounded-full ${
-                            isInstalled ? 'bg-green-500' : 'bg-gray-300'
+                            isInstalled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
                           }`}></div>
-                          <h5 className="text-sm font-medium text-gray-900 flex items-center space-x-2">
+                          <h5 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center space-x-2">
                             <span>{model.name}</span>
                             <span className={`px-2 py-0.5 text-xs rounded-full ${
-                              categoryColors[model.category] || 'bg-gray-100 text-gray-800'
+                              categoryColors[model.category] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                             }`}>
                               {model.category}
                             </span>
-                            <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
+                            <span className="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">
                               {model.params}
                             </span>
                           </h5>
                         </div>
-                        <p className="text-sm text-gray-600 mb-1">{model.description}</p>
-                        <p className="text-xs text-gray-400">Taille: {model.size}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{model.description}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-400">Taille: {model.size}</p>
                       </div>
 
                       <div className="ml-4 flex items-center space-x-2">
@@ -1278,8 +1291,8 @@ const Settings: React.FC = () => {
 
           {/* Footer avec statistiques */}
           {searchResults.length > 0 && (
-            <div className="sticky bottom-0 bg-white border-t pt-3">
-              <p className="text-sm text-gray-500 text-center">
+            <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 pt-3">
+              <p className="text-sm text-gray-500 dark:text-gray-500 text-center">
                 {searchResults.length} modèle(s) trouvé(s)
                 {searchQuery && ` pour "${searchQuery}"`}
               </p>

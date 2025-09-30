@@ -403,7 +403,7 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
       </div>
     );
@@ -411,7 +411,7 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
 
   if (error || !paper) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error || 'Article introuvable'}</p>
           <button
@@ -427,14 +427,14 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <button
               onClick={goToHome}
-              className="inline-flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Retour à l'accueil
@@ -453,46 +453,46 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
             </button>
           </div>
           <div className="mt-4">
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <Settings className="w-6 h-6 text-indigo-600" />
               Gérer l'article
             </h1>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
               Modifiez les informations de l'article et gérez ses métadonnées
             </p>
           </div>
         </div>
 
         {/* Main Form */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Form Fields */}
             <div className="lg:col-span-2">
               <div className="space-y-6">
                 {/* Title */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Titre *
                   </label>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => handleInputChange('title', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="Titre de l'article"
                   />
                 </div>
 
                 {/* Authors */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Auteurs
                   </label>
                   <input
                     type="text"
                     value={formData.authors}
                     onChange={(e) => handleInputChange('authors', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="Nom des auteurs (séparés par des virgules)"
                   />
                 </div>
@@ -500,26 +500,26 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                 {/* Journal */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Journal
                     </label>
                     <input
                       type="text"
                       value={formData.conference}
                       onChange={(e) => handleInputChange('conference', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       placeholder="Nom du journal/conférence"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Journal (abrégé)
                     </label>
                     <input
                       type="text"
                       value={formData.conference_short}
                       onChange={(e) => handleInputChange('conference_short', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       placeholder="Nom abrégé"
                     />
                   </div>
@@ -528,28 +528,28 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                 {/* Year and Month */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Année
                     </label>
                     <input
                       type="number"
                       value={formData.year}
                       onChange={(e) => handleInputChange('year', parseInt(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       placeholder="2024"
                       min="1900"
                       max={new Date().getFullYear() + 10}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Mois
                     </label>
                     <input
                       type="number"
                       value={formData.month}
                       onChange={(e) => handleInputChange('month', e.target.value ? parseInt(e.target.value) : '')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       placeholder="1-12"
                       min="1"
                       max="12"
@@ -559,42 +559,42 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
 
                 {/* DOI */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     DOI
                   </label>
                   <input
                     type="text"
                     value={formData.doi}
                     onChange={(e) => handleInputChange('doi', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="10.1000/journal.example"
                   />
                 </div>
 
                 {/* URL */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     URL
                   </label>
                   <input
                     type="url"
                     value={formData.url}
                     onChange={(e) => handleInputChange('url', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="https://..."
                   />
                 </div>
 
                 {/* Abstract */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Résumé
                   </label>
                   <textarea
                     value={formData.abstract}
                     onChange={(e) => handleInputChange('abstract', e.target.value)}
                     rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="Résumé de l'article..."
                   />
                 </div>
@@ -602,13 +602,13 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                 {/* Reading Status and Favorite */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Statut de lecture
                     </label>
                     <select
                       value={formData.reading_status}
                       onChange={(e) => handleInputChange('reading_status', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="unread">Non lu</option>
                       <option value="reading">En cours de lecture</option>
@@ -621,16 +621,16 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                         type="checkbox"
                         checked={formData.is_favorite}
                         onChange={(e) => handleInputChange('is_favorite', e.target.checked)}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-700 rounded"
                       />
-                      <span className="ml-2 text-sm text-gray-700">Article favori</span>
+                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Article favori</span>
                     </label>
                   </div>
                 </div>
 
                 {/* Images Management Section */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
                     Gestion des Images
                   </h3>
 
@@ -638,20 +638,20 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <Eye className="w-5 h-5 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-800">
+                      <span className="text-sm font-medium text-blue-800 dark:text-blue-400">
                         Images sauvegardées ({savedImages.length})
                       </span>
                     </div>
 
                     {isLoadingImages ? (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="bg-blue-50 dark:bg-gray-700 border border-blue-200 dark:border-gray-700 rounded-lg p-4">
                         <div className="flex items-center gap-2 justify-center">
                           <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                          <span className="text-sm text-blue-600">Chargement des images sauvegardées...</span>
+                          <span className="text-sm text-blue-600 dark:text-blue-400">Chargement des images sauvegardées...</span>
                         </div>
                       </div>
                     ) : savedImages.length > 0 ? (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="bg-blue-50 dark:bg-gray-700 border border-blue-200 dark:border-gray-700 rounded-lg p-4">
                         <div className="grid grid-cols-3 gap-3">
                           {savedImages.map((image, index) => {
                             const isMarkedForDeletion = imagesToDelete.has(image.filename);
@@ -706,14 +706,14 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                           })}
                         </div>
                         {imagesToDelete.size > 0 && (
-                          <div className="mt-3 text-center text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                          <div className="mt-3 text-center text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
                             {imagesToDelete.size} image(s) marquée(s) pour suppression - elles seront supprimées lors de l'enregistrement
                           </div>
                         )}
                       </div>
                     ) : (
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-gray-500">
+                      <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                           <Eye className="w-5 h-5" />
                           <span className="text-sm">Aucune image sauvegardée</span>
                         </div>
@@ -745,26 +745,26 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <Plus className="w-5 h-5 text-green-600" />
-                          <span className="text-sm font-medium text-green-800">
+                          <span className="text-sm font-medium text-green-800 dark:text-green-400">
                             Nouvelles images extraites ({extractedImages.length})
                           </span>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={selectedExtractedImages.size === extractedImages.length ? handleDeselectAllExtracted : handleSelectAllExtracted}
-                            className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                            className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
                           >
                             {selectedExtractedImages.size === extractedImages.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                           </button>
                           {selectedExtractedImages.size > 0 && (
-                            <span className="text-xs text-green-600 self-center">
+                            <span className="text-xs text-green-600 dark:text-green-400 self-center">
                               {selectedExtractedImages.size} sélectionnée(s)
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="bg-green-50 dark:bg-gray-700 border border-green-200 dark:border-gray-700 rounded-lg p-4">
                         <div className="grid grid-cols-3 gap-3 mb-4">
                           {extractedImages.map((imagePath, index) => {
                             const filename = imagePath.split('/').pop() || '';
@@ -795,7 +795,7 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
 
                         {/* Info message about saving */}
                         {selectedExtractedImages.size > 0 && (
-                          <div className="text-center text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+                          <div className="text-center text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
                             {selectedExtractedImages.size} image(s) sélectionnée(s) - elles seront sauvegardées lors de l'enregistrement
                           </div>
                         )}
@@ -810,7 +810,7 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
             <div className="space-y-6">
               {/* Cover Image */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Image de couverture
                 </label>
                 <div className="space-y-4">
@@ -846,10 +846,10 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                   />
                   <label
                     htmlFor="cover-upload"
-                    className="block w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
+                    className="block w-full px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <Upload className="w-5 h-5 mx-auto mb-2 text-gray-400" />
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
                       {coverImagePreview ? 'Changer l\'image' : 'Ajouter une image de couverture'}
                     </span>
                   </label>
@@ -858,7 +858,7 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
 
               {/* Tags Section */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Tags
                 </label>
 
@@ -884,7 +884,7 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
 
                 {/* Available Tags */}
                 <div className="mb-3">
-                  <div className="text-xs text-gray-500 mb-2">Tags disponibles</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Tags disponibles</div>
                   <div className="flex flex-wrap gap-2">
                     {availableTags
                       .filter(tag => !selectedTags.find(st => st.id === tag.id))
@@ -892,7 +892,7 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                         <button
                           key={tag.id}
                           onClick={() => handleTagSelect(tag)}
-                          className="px-3 py-1 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition-colors"
+                          className="px-3 py-1 rounded-full text-sm border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                           style={{ borderColor: tag.color, color: tag.color }}
                         >
                           {tag.name}
@@ -908,7 +908,7 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                     value={newTagName}
                     onChange={(e) => setNewTagName(e.target.value)}
                     placeholder="Nouveau tag"
-                    className="flex-1 px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="flex-1 px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     onKeyPress={(e) => e.key === 'Enter' && handleCreateTag()}
                   />
                   <button
@@ -927,17 +927,17 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
 
               {/* PDF Section */}
               <div className="space-y-4">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Fichier PDF
                 </label>
 
                 {/* Existing PDF */}
                 {existingPDF && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-green-600" />
-                        <span className="text-sm font-medium text-green-800">PDF existant</span>
+                        <FileText className="w-5 h-5 text-green-600 dark:text-green-400" />
+                        <span className="text-sm font-medium text-green-800 dark:text-green-400">PDF existant</span>
                       </div>
                       <a
                         href={existingPDF}
@@ -955,21 +955,21 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
 
                 {/* Upload New PDF */}
                 <div>
-                  <div className="text-sm text-gray-600 mb-2">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                     {existingPDF ? 'Remplacer le PDF' : 'Ajouter un PDF'}
                   </div>
                   <div
                     className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
                       isDragging
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-gray-300 hover:border-indigo-400'
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-gray-700'
+                        : 'border-gray-300 dark:border-gray-700 hover:border-indigo-400'
                     }`}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                   >
                     <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
                       <input
                         type="file"
                         accept=".pdf"
@@ -977,17 +977,17 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                         className="hidden"
                         id="pdf-upload"
                       />
-                      <label htmlFor="pdf-upload" className="cursor-pointer text-indigo-600 hover:text-indigo-800">
+                      <label htmlFor="pdf-upload" className="cursor-pointer text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">
                         Cliquez pour sélectionner
                       </label>
                       {' ou glissez-déposez un fichier PDF'}
                     </div>
                     {selectedFile && (
                       <div className="mt-2 space-y-1">
-                        <div className="text-sm text-green-600">
+                        <div className="text-sm text-green-600 dark:text-green-400">
                           Fichier sélectionné: {selectedFile.name}
                         </div>
-                        <div className="text-xs text-blue-600">
+                        <div className="text-xs text-blue-600 dark:text-blue-400">
                           {existingPDF ? 'Remplacera le PDF existant' : 'Sera téléchargé'} lors de l\'enregistrement
                         </div>
                       </div>

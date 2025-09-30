@@ -212,12 +212,12 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
   if (contextLoading) {
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-800">
           <div className="flex items-center space-x-3">
             <Bot className="w-6 h-6 text-blue-600" />
             <div>
-              <h3 className="font-semibold text-gray-900">Assistant IA</h3>
-              <p className="text-sm text-gray-600">{paper.title}</p>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Assistant IA</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{paper.title}</p>
             </div>
           </div>
         </div>
@@ -225,8 +225,8 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">Analyse du document en cours...</p>
-            <p className="text-sm text-gray-500 mt-2">Extraction du texte PDF</p>
+            <p className="text-gray-600 dark:text-gray-400">Analyse du document en cours...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">Extraction du texte PDF</p>
           </div>
         </div>
       </div>
@@ -236,12 +236,12 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
   if (error) {
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-800">
           <div className="flex items-center space-x-3">
             <Bot className="w-6 h-6 text-blue-600" />
             <div>
-              <h3 className="font-semibold text-gray-900">Assistant IA</h3>
-              <p className="text-sm text-gray-600">{paper.title}</p>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Assistant IA</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{paper.title}</p>
             </div>
           </div>
         </div>
@@ -250,7 +250,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
           <div className="text-center">
             <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-4" />
             <p className="text-red-600 font-medium">Erreur de chargement</p>
-            <p className="text-sm text-gray-600 mt-2">{error}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{error}</p>
             <button
               onClick={extractPdfText}
               className="btn-primary mt-4"
@@ -265,24 +265,24 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-800">
         <div className="flex items-center space-x-3">
           <Bot className="w-6 h-6 text-blue-600" />
           <div>
-            <h3 className="font-semibold text-gray-900">Assistant IA</h3>
-            <p className="text-sm text-gray-600 truncate max-w-md">{paper.title}</p>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Assistant IA</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-md">{paper.title}</p>
           </div>
         </div>
       </div>
 
       {/* Sélecteur de modèle */}
-      <div className="p-3 border-b border-gray-200 bg-gray-50">
+      <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center space-x-3">
-          <label className="text-sm font-medium text-gray-700">Modèle IA :</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Modèle IA :</label>
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value)}
-            className="flex-1 text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="flex-1 text-sm border border-gray-300 dark:border-gray-700 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             disabled={isLoading}
           >
             {installedModels.length === 0 ? (
@@ -319,11 +319,11 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
               <div className={`rounded-lg p-3 ${
                 message.type === 'user'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-900'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
               }`}>
                 <p className="whitespace-pre-wrap">{message.content}</p>
                 <p className={`text-xs mt-1 ${
-                  message.type === 'user' ? 'text-blue-100' : 'text-gray-500'
+                  message.type === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
                 }`}>
                   {message.timestamp.toLocaleTimeString()}
                 </p>
@@ -338,7 +338,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
                 <Bot className="w-4 h-4" />
               </div>
-              <div className="bg-gray-100 text-gray-900 rounded-lg p-3">
+              <div className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg p-3">
                 <div className="flex items-center space-x-2">
                   <Loader className="w-4 h-4 animate-spin" />
                   <span>L'IA analyse votre question...</span>
@@ -351,14 +351,14 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 dark:border-gray-700">
         <div className="flex space-x-3">
           <textarea
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Posez votre question sur l'article..."
-            className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="flex-1 resize-none border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
             rows={1}
             disabled={isLoading}
           />
@@ -371,7 +371,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
             <span>Envoyer</span>
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
           Appuyez sur Entrée pour envoyer, Shift+Entrée pour une nouvelle ligne
         </p>
       </form>

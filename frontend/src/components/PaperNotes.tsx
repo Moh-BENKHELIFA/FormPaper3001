@@ -221,10 +221,10 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement...</p>
+          <p className="text-gray-600 dark:text-gray-400">Chargement...</p>
         </div>
       </div>
     );
@@ -232,16 +232,16 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
 
   if (!paper) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Article non trouvé</p>
+          <p className="text-gray-600 dark:text-gray-400">Article non trouvé</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header avec image de couverture en background */}
       <div className="sticky top-0 z-10">
         <div
@@ -258,9 +258,9 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
               {/* Navigation à gauche */}
               <button
                 onClick={goToHome}
-                className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm flex-shrink-0"
+                className="p-1.5 rounded-full bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 hover:bg-opacity-100 dark:hover:bg-opacity-100 transition-all shadow-sm flex-shrink-0"
               >
-                <ArrowLeft className="w-4 h-4 text-gray-600" />
+                <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />
               </button>
 
               {/* Titre */}
@@ -326,7 +326,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
               {/* Bouton Favoris */}
               <button
                 onClick={handleFavoriteToggle}
-                className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
+                className="p-1.5 rounded-full bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 hover:bg-opacity-100 dark:hover:bg-opacity-100 transition-all shadow-sm"
                 disabled={isUpdating}
                 title={paper.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
               >
@@ -334,7 +334,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
                   className={`w-4 h-4 transition-colors ${
                     paper.is_favorite
                       ? 'text-red-500 fill-red-500'
-                      : 'text-gray-600'
+                      : 'text-gray-600 dark:text-gray-400'
                   }`}
                 />
               </button>
@@ -343,7 +343,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
               {hasPDF() && (
                 <button
                   onClick={handlePDFOpen}
-                  className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
+                  className="p-1.5 rounded-full bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 hover:bg-opacity-100 dark:hover:bg-opacity-100 transition-all shadow-sm"
                   title="Ouvrir le PDF dans un nouvel onglet"
                 >
                   <FileText className="w-4 h-4 text-red-600" />
@@ -354,7 +354,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
               {hasPDF() && (
                 <button
                   onClick={handleAIChatToggle}
-                  className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
+                  className="p-1.5 rounded-full bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 hover:bg-opacity-100 dark:hover:bg-opacity-100 transition-all shadow-sm"
                   title="Chat IA - Analyser avec l'intelligence artificielle"
                 >
                   <MessageCircle className="w-4 h-4 text-purple-600" />
@@ -367,7 +367,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
                   href={`https://doi.org/${paper.doi}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
+                  className="p-1.5 rounded-full bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 hover:bg-opacity-100 dark:hover:bg-opacity-100 transition-all shadow-sm"
                   title={`DOI: ${paper.doi}`}
                 >
                   <Globe className="w-4 h-4 text-blue-600" />
@@ -414,17 +414,17 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
       </div>
 
       {/* Contenu principal - Notes seules, SplitView double, ou TripleSplitView */}
-      <div className="flex-1 bg-white" style={{ height: 'calc(100vh - 90px)' }}>
+      <div className="flex-1 bg-white dark:bg-gray-800" style={{ height: 'calc(100vh - 90px)' }}>
         {isPdfOpen && isAIChatOpen && hasPDF() ? (
           /* Triple Split View - Chat IA à gauche, Notes au centre, PDF à droite */
           <TripleSplitView
             leftPanel={
-              <div className="h-full bg-white">
+              <div className="h-full bg-white dark:bg-gray-800">
                 <AIChat paper={paper} />
               </div>
             }
             centerPanel={
-              <div className="h-full bg-white">
+              <div className="h-full bg-white dark:bg-gray-800">
                 <BlockEditor
                   articleId={paperId.toString()}
                   initialBlocks={blocks}
@@ -447,7 +447,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
           /* Split View avec PDF à droite */
           <SplitView
             leftPanel={
-              <div className="h-full bg-white">
+              <div className="h-full bg-white dark:bg-gray-800">
                 <BlockEditor
                   articleId={paperId.toString()}
                   initialBlocks={blocks}
@@ -470,12 +470,12 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
           /* Split View avec Chat IA à gauche */
           <SplitView
             leftPanel={
-              <div className="h-full bg-white">
+              <div className="h-full bg-white dark:bg-gray-800">
                 <AIChat paper={paper} />
               </div>
             }
             rightPanel={
-              <div className="h-full bg-white">
+              <div className="h-full bg-white dark:bg-gray-800">
                 <BlockEditor
                   articleId={paperId.toString()}
                   initialBlocks={blocks}
@@ -509,7 +509,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
             className={`fixed right-4 top-1/2 transform -translate-y-1/2 z-20 transition-all duration-300 group ${
               isPdfOpen
                 ? 'bg-red-600 hover:bg-red-700 shadow-lg'
-                : 'bg-gray-200 hover:bg-gray-300 hover:shadow-lg'
+                : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700 hover:shadow-lg'
             } rounded-full p-3`}
             title={isPdfOpen ? "Fermer le PDF" : "Ouvrir le PDF en split view"}
           >
@@ -519,7 +519,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
               {isPdfOpen ? (
                 <X className="w-5 h-5 text-white" />
               ) : (
-                <PanelRightOpen className="w-5 h-5 text-gray-700" />
+                <PanelRightOpen className="w-5 h-5 text-gray-700 dark:text-gray-300" />
               )}
             </div>
           </button>
@@ -530,7 +530,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
             className={`fixed left-4 top-1/2 transform -translate-y-1/2 z-20 transition-all duration-300 group ${
               isAIChatOpen
                 ? 'bg-purple-600 hover:bg-purple-700 shadow-lg'
-                : 'bg-gray-200 hover:bg-gray-300 hover:shadow-lg'
+                : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-700 hover:shadow-lg'
             } rounded-full p-3`}
             title={isAIChatOpen ? "Fermer le Chat IA" : "Ouvrir le Chat IA en split view"}
           >
@@ -540,7 +540,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
               {isAIChatOpen ? (
                 <X className="w-5 h-5 text-white" />
               ) : (
-                <MessageCircle className="w-5 h-5 text-gray-700" />
+                <MessageCircle className="w-5 h-5 text-gray-700 dark:text-gray-300" />
               )}
             </div>
           </button>

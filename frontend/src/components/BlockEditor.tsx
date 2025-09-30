@@ -715,13 +715,13 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
             e.stopPropagation();
             handleCreateNewBlock();
           }}
-          className="flex items-center justify-center w-full py-3 px-4 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-all duration-200 bg-gray-50 hover:bg-gray-100"
+          className="flex items-center justify-center w-full py-3 px-4 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-200 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
           Créer un nouveau bloc
-          <span className="ml-2 text-xs text-gray-400 font-mono">Ctrl+Entrée</span>
+          <span className="ml-2 text-xs text-gray-400 dark:text-gray-600 font-mono">Ctrl+Entrée</span>
         </button>
       </div>
 
@@ -735,14 +735,14 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
       {/* Slash Command Suggestions */}
       {showSlashCommands && slashSuggestions.length > 0 && focusedBlockIndex !== null && slashMenuPosition && (
         <div
-          className="absolute bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-w-xs"
+          className="absolute bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg z-50 max-w-xs"
           style={{
             top: `${slashMenuPosition.y}px`,
             left: `${slashMenuPosition.x}px`
           }}
         >
-          <div className="p-2 border-b border-gray-200">
-            <p className="text-xs text-gray-500 font-medium">BLOCS</p>
+          <div className="p-2 border-b border-gray-200 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">BLOCS</p>
           </div>
           <div className="max-h-64 overflow-y-auto">
             {slashSuggestions.map((suggestion, index) => (
@@ -750,14 +750,14 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
                 key={suggestion.id}
                 onClick={() => handleSlashCommandSelect(suggestion)}
                 className={`
-                  w-full text-left p-3 hover:bg-gray-50 flex items-center space-x-3
-                  ${index === selectedSuggestionIndex ? 'bg-blue-50 border-r-2 border-blue-500' : ''}
+                  w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-3
+                  ${index === selectedSuggestionIndex ? 'bg-blue-50 dark:bg-gray-700 border-r-2 border-blue-500' : ''}
                 `}
               >
                 <span className="text-lg">{suggestion.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 text-sm">{suggestion.label}</p>
-                  <p className="text-xs text-gray-500 truncate">{suggestion.description}</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{suggestion.label}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{suggestion.description}</p>
                 </div>
               </button>
             ))}
@@ -767,7 +767,7 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
 
       {/* Debug info (remove in production) */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="mt-8 p-4 bg-gray-100 rounded-lg text-xs text-gray-600">
+        <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-xs text-gray-600 dark:text-gray-400">
           <p>Blocs: {blocks.length}</p>
           <p>Focus: {focusedBlockIndex}</p>
           <p>Slash: {showSlashCommands ? slashQuery : 'none'}</p>

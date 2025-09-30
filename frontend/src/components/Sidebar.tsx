@@ -77,15 +77,15 @@ const Sidebar: React.FC<SidebarProps> = ({ stats }) => {
   ];
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+    <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
       <div className="p-6">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <TrendingUp className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-gray-900">FormPaper</h1>
-            <p className="text-xs text-gray-500">3001</p>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">FormPaper</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-500">3001</p>
           </div>
         </div>
       </div>
@@ -100,8 +100,8 @@ const Sidebar: React.FC<SidebarProps> = ({ stats }) => {
               className={`
                 w-full sidebar-item
                 ${item.isActive
-                  ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                  : 'text-gray-700 hover:text-gray-900'
+                  ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-500'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
                 }
               `}
             >
@@ -113,7 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({ stats }) => {
       </nav>
 
       <div className="mt-8 px-3">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+        <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase tracking-wider mb-3">
           Statistiques
         </h3>
         <div className="space-y-2">
@@ -122,15 +122,15 @@ const Sidebar: React.FC<SidebarProps> = ({ stats }) => {
             return (
               <div
                 key={stat.label}
-                className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50"
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 <div className="flex items-center space-x-3">
                   <div className={`w-8 h-8 rounded-lg ${stat.bgColor} flex items-center justify-center`}>
                     <Icon className={`w-4 h-4 ${stat.color}`} />
                   </div>
-                  <span className="text-sm text-gray-700">{stat.label}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{stat.label}</span>
                 </div>
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {stat.value}
                 </span>
               </div>
@@ -146,8 +146,8 @@ const Sidebar: React.FC<SidebarProps> = ({ stats }) => {
             className={`
               w-full sidebar-item
               ${currentPage === 'settings'
-                ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                : 'text-gray-700 hover:text-gray-900'
+                ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-500'
+                : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
               }
             `}
           >
@@ -156,8 +156,8 @@ const Sidebar: React.FC<SidebarProps> = ({ stats }) => {
           </button>
         </div>
 
-        <div className="p-4 border-t border-gray-200">
-          <div className="text-xs text-gray-500">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-xs text-gray-500 dark:text-gray-500">
             <p>FormPaper 3001</p>
             <p>Gestion d'articles scientifiques</p>
           </div>

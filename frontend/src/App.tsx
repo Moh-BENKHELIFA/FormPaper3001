@@ -1,5 +1,6 @@
 import React from 'react';
 import { ToastProvider } from './contexts/ToastContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { useNavigation } from './hooks/useNavigation';
 import HomePage from './components/HomePage';
 import PaperNotes from './components/PaperNotes';
@@ -27,11 +28,13 @@ const App: React.FC = () => {
   };
 
   return (
-    <ToastProvider>
-      <div className="min-h-screen bg-gray-50">
-        {renderCurrentPage()}
-      </div>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+          {renderCurrentPage()}
+        </div>
+      </ToastProvider>
+    </ThemeProvider>
   );
 };
 

@@ -327,8 +327,8 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
     if (tagsLoading) {
       return (
         <div className="flex items-center space-x-1">
-          <TagIcon className="w-3 h-3 text-gray-400" />
-          <span className="text-xs text-gray-400">Chargement...</span>
+          <TagIcon className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+          <span className="text-xs text-gray-400 dark:text-gray-500">Chargement...</span>
         </div>
       );
     }
@@ -345,7 +345,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
         {visibleTags.map((tag) => (
           <span
             key={tag.id}
-            className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full text-gray-700"
+            className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full text-gray-700 dark:text-gray-300"
             style={{
               backgroundColor: `${tag.color}15`, // 15 = ~8% opacity en hex
               borderColor: tag.color,
@@ -358,13 +358,13 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
 
         {hiddenTags.length > 0 && (
           <div className="relative group">
-            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-white border border-gray-300 text-gray-700 cursor-help">
+            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 cursor-help">
               +{hiddenTags.length}
             </span>
 
             {/* Tooltip pour les tags cachés */}
             <div className="absolute bottom-full left-0 mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-              <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap shadow-lg">
+              <div className="bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 text-xs rounded-lg py-2 px-3 whitespace-nowrap shadow-lg">
                 <div className="space-y-1">
                   {hiddenTags.map((tag) => (
                     <div key={tag.id} className="flex items-center space-x-2">
@@ -378,7 +378,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
                 </div>
                 {/* Arrow pointing down */}
                 <div className="absolute top-full left-4 transform -translate-x-1/2">
-                  <div className="border-4 border-transparent border-t-gray-900"></div>
+                  <div className="border-4 border-transparent border-t-gray-900 dark:border-t-gray-800"></div>
                 </div>
               </div>
             </div>
@@ -398,7 +398,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
         onContextMenu={handleContextMenu}
       >
       {/* Image de couverture */}
-      <div className="relative h-48 bg-gray-200 overflow-hidden rounded-t-lg">
+      <div className="relative h-48 bg-gray-200 dark:bg-gray-700 overflow-hidden rounded-t-lg">
         {localPaper.image ? (
           <img
             src={`/api/${localPaper.image}`}
@@ -406,8 +406,8 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-300 flex items-center justify-center">
-            <BookOpen className="w-16 h-16 text-gray-400" />
+          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-300 dark:from-gray-700 dark:to-gray-900 flex items-center justify-center">
+            <BookOpen className="w-16 h-16 text-gray-400 dark:text-gray-500" />
           </div>
         )}
 
@@ -415,7 +415,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
         <div className="absolute top-2 right-2 flex space-x-2">
           <button
             onClick={handleFavoriteToggle}
-            className="p-2 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-colors shadow-sm"
+            className="p-2 rounded-full bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 hover:bg-opacity-100 dark:hover:bg-opacity-100 transition-colors shadow-sm"
             disabled={isUpdating}
             title={localPaper.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
           >
@@ -423,13 +423,13 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
               className={`w-4 h-4 transition-colors ${
                 localPaper.is_favorite
                   ? 'text-red-500 fill-red-500'
-                  : 'text-gray-600'
+                  : 'text-gray-600 dark:text-gray-400'
               }`}
             />
           </button>
           <button
             onClick={handleDeletePaper}
-            className="p-2 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-colors shadow-sm"
+            className="p-2 rounded-full bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 hover:bg-opacity-100 dark:hover:bg-opacity-100 transition-colors shadow-sm"
             disabled={isUpdating}
             title="Supprimer l'article"
           >
@@ -456,22 +456,22 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
       {/* Contenu de la carte */}
       <div className="flex flex-col flex-grow p-4 space-y-3">
         {/* Titre */}
-        <h3 className="font-semibold text-lg line-clamp-2 flex-grow">
+        <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100 line-clamp-2 flex-grow">
           {localPaper.title}
         </h3>
 
         {/* Auteurs */}
-        <p className="text-sm text-gray-700 line-clamp-2">
+        <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
           {localPaper.authors}
         </p>
 
         {/* Conférence/Journal */}
-        <p className="text-xs text-gray-500 line-clamp-1">
+        <p className="text-xs text-gray-500 dark:text-gray-500 line-clamp-1">
           {localPaper.conference}
         </p>
 
         {/* Informations supplémentaires */}
-        <div className="flex justify-between items-center text-xs text-gray-500">
+        <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-500">
           <span>{formatDate()}</span>
           <span>Ajouté le {formatCreationDate()}</span>
         </div>
@@ -482,7 +482,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
         </div>
 
         {/* Boutons de changement de statut et DOI */}
-        <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+        <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-gray-700">
           <div className="flex space-x-1">
             {statusOptions.map((status) => (
               <button
@@ -519,7 +519,7 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-blue-600 hover:text-blue-800 underline max-w-[120px] truncate"
+              className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline max-w-[120px] truncate"
               title={`DOI: ${localPaper.doi}`}
             >
               {localPaper.doi}

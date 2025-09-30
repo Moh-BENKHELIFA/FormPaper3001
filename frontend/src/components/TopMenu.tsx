@@ -127,12 +127,12 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
   ];
 
   return (
-    <div className="bg-white border-b border-gray-200">
+    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Rechercher des articles..."
@@ -146,7 +146,7 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
               onClick={() => setShowFilters(!showFilters)}
               className={`
                 btn-secondary flex items-center space-x-2
-                ${showFilters ? 'bg-blue-100 text-blue-700' : ''}
+                ${showFilters ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : ''}
               `}
             >
               <Filter className="w-4 h-4" />
@@ -155,7 +155,7 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
           </div>
 
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500 mr-2">Vue:</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 mr-2">Vue:</span>
             {viewModes.map(({ mode, icon: Icon, label }) => (
               <button
                 key={mode}
@@ -163,8 +163,8 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
                 className={`
                   p-2 rounded-lg transition-colors
                   ${viewMode === mode
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200'
                   }
                 `}
                 title={label}
@@ -176,7 +176,7 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
         </div>
 
         {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <PaperFiltersComponent
               filters={filters}
               onFiltersChange={handleFiltersChange}

@@ -63,17 +63,17 @@ export const Modal: React.FC<ModalProps> = ({
     >
       <div
         className={clsx(
-          'bg-white rounded-lg shadow-xl w-full animate-slide-up',
+          'bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full animate-slide-up',
           sizeClasses[size],
           className
         )}
       >
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
           {showCloseButton && (
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
