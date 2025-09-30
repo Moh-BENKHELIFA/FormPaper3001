@@ -452,7 +452,7 @@ router.post('/pdf/extract', async (req, res) => {
 // Chat avec l'IA sur un document
 router.post('/chat', async (req, res) => {
   try {
-    const { message, context, modelName = 'llama3.1:8b' } = req.body;
+    const { message, context, modelName = 'llama3.1:8b', history = [] } = req.body;
 
     if (!message) {
       return res.status(400).json({
@@ -461,27 +461,45 @@ router.post('/chat', async (req, res) => {
       });
     }
 
-    // Construire le prompt avec le contexte du document
+    // Construire le prompt avec le contexte du document et l'historique
     let fullPrompt = '';
 
-    if (context && context.text) {
-      fullPrompt = `Tu es un assistant IA spécialisé dans l'analyse d'articles de recherche scientifique.
+    if (context) {
+      const contextText = typeof context === 'string' ? context : (context.text || '');
+
+      if (contextText) {
+        fullPrompt = `Tu es un assistant IA spécialisé dans l'analyse d'articles de recherche scientifique.
 
 CONTEXTE - Voici le contenu de l'article à analyser :
 
-${context.text.substring(0, 20000)} ${context.text.length > 20000 ? '...' : ''}
+${contextText.substring(0, 20000)} ${contextText.length > 20000 ? '...' : ''}
+`;
 
-QUESTION DE L'UTILISATEUR :
+        // Ajouter l'historique de conversation s'il existe
+        if (history && history.length > 0) {
+          fullPrompt += `\nHISTORIQUE DE CONVERSATION :\n`;
+          history.slice(-6).forEach(msg => { // Garder seulement les 6 derniers messages
+            const role = msg.type === 'user' ? 'UTILISATEUR' : 'ASSISTANT';
+            fullPrompt += `${role}: ${msg.content}\n`;
+          });
+        }
+
+        fullPrompt += `
+NOUVELLE QUESTION DE L'UTILISATEUR :
 ${message}
 
 INSTRUCTIONS :
 - Réponds uniquement en français
 - Base ta réponse sur le contenu de l'article fourni
+- Tiens compte de l'historique de conversation pour fournir des réponses contextuelles
 - Sois précis et factuel
 - Si l'information n'est pas dans l'article, dis-le clairement
 - Structure ta réponse de manière claire et lisible
 
 RÉPONSE :`;
+      } else {
+        fullPrompt = `Tu es un assistant IA pour l'analyse d'articles scientifiques. Réponds en français à cette question : ${message}`;
+      }
     } else {
       fullPrompt = `Tu es un assistant IA pour l'analyse d'articles scientifiques. Réponds en français à cette question : ${message}`;
     }
@@ -526,6 +544,119 @@ RÉPONSE :`;
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la communication avec l\'IA'
+    });
+  }
+});
+
+// Sauvegarder l'historique du chat
+router.post('/chat/history/:paperId', async (req, res) => {
+  try {
+    const { paperId } = req.params;
+    const { messages } = req.body;
+
+    if (!paperId || !messages) {
+      return res.status(400).json({
+        success: false,
+        error: 'L\'ID du paper et les messages sont requis'
+      });
+    }
+
+    // Trouver le dossier du paper
+    const paperFolderPath = path.join(__dirname, '..', 'MyPapers');
+    const folders = await fs.readdir(paperFolderPath);
+
+    let foundFolder = null;
+    for (const folder of folders) {
+      if (folder.includes(`_${paperId}`)) {
+        foundFolder = folder;
+        break;
+      }
+    }
+
+    if (!foundFolder) {
+      return res.status(404).json({
+        success: false,
+        error: 'Dossier du paper non trouvé'
+      });
+    }
+
+    const chatHistoryPath = path.join(paperFolderPath, foundFolder, `${paperId}_aiChat.json`);
+
+    // Sauvegarder l'historique
+    await fs.writeJson(chatHistoryPath, {
+      paperId,
+      messages,
+      lastUpdated: new Date().toISOString()
+    }, { spaces: 2 });
+
+    res.json({
+      success: true,
+      message: 'Historique sauvegardé avec succès'
+    });
+
+  } catch (error) {
+    console.error('Error saving chat history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la sauvegarde de l\'historique'
+    });
+  }
+});
+
+// Charger l'historique du chat
+router.get('/chat/history/:paperId', async (req, res) => {
+  try {
+    const { paperId } = req.params;
+
+    // Trouver le dossier du paper
+    const paperFolderPath = path.join(__dirname, '..', 'MyPapers');
+    const folders = await fs.readdir(paperFolderPath);
+
+    let foundFolder = null;
+    for (const folder of folders) {
+      if (folder.includes(`_${paperId}`)) {
+        foundFolder = folder;
+        break;
+      }
+    }
+
+    if (!foundFolder) {
+      return res.status(404).json({
+        success: false,
+        error: 'Dossier du paper non trouvé'
+      });
+    }
+
+    const chatHistoryPath = path.join(paperFolderPath, foundFolder, `${paperId}_aiChat.json`);
+
+    // Vérifier si le fichier existe
+    if (!await fs.pathExists(chatHistoryPath)) {
+      return res.json({
+        success: true,
+        data: {
+          messages: [],
+          exists: false
+        }
+      });
+    }
+
+    // Charger l'historique
+    const history = await fs.readJson(chatHistoryPath);
+
+    res.json({
+      success: true,
+      data: {
+        messages: history.messages || [],
+        lastUpdated: history.lastUpdated,
+        exists: true
+      }
+    });
+
+  } catch (error) {
+    console.error('Error loading chat history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors du chargement de l\'historique'
     });
   }
 });

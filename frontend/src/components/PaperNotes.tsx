@@ -8,6 +8,7 @@ import { Paper } from '../types/Paper';
 import { Block } from '../types/BlockTypes';
 import BlockEditor from './BlockEditor';
 import SplitView from './SplitView';
+import TripleSplitView from './TripleSplitView';
 import PDFViewer from './PDFViewer';
 import AIChat from './AIChat';
 
@@ -26,6 +27,9 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
   const [isPdfOpen, setIsPdfOpen] = useState(false);
   const [splitPercentage, setSplitPercentage] = useState(50);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+  const [aiChatSplitPercentage, setAiChatSplitPercentage] = useState(40);
+  const [tripleLeftPercentage, setTripleLeftPercentage] = useState(30);
+  const [tripleRightPercentage, setTripleRightPercentage] = useState(30);
 
   useEffect(() => {
     loadPaper();
@@ -134,10 +138,26 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
     setIsPdfOpen(!isPdfOpen);
   };
 
+  const handleAIChatToggle = () => {
+    setIsAIChatOpen(!isAIChatOpen);
+  };
+
   const handleSplitChange = (percentage: number) => {
     setSplitPercentage(percentage);
     // Sauvegarder la préférence dans le localStorage
     localStorage.setItem(`split_${paperId}`, percentage.toString());
+  };
+
+  const handleAIChatSplitChange = (percentage: number) => {
+    setAiChatSplitPercentage(percentage);
+    localStorage.setItem(`aiChatSplit_${paperId}`, percentage.toString());
+  };
+
+  const handleTripleSplitChange = (leftPercentage: number, rightPercentage: number) => {
+    setTripleLeftPercentage(leftPercentage);
+    setTripleRightPercentage(rightPercentage);
+    localStorage.setItem(`tripleSplitLeft_${paperId}`, leftPercentage.toString());
+    localStorage.setItem(`tripleSplitRight_${paperId}`, rightPercentage.toString());
   };
 
   // Charger la préférence de split au chargement
@@ -333,7 +353,7 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
               {/* Bouton Chat IA */}
               {hasPDF() && (
                 <button
-                  onClick={() => setIsAIChatOpen(true)}
+                  onClick={handleAIChatToggle}
                   className="p-1.5 rounded-full bg-white bg-opacity-90 hover:bg-opacity-100 transition-all shadow-sm"
                   title="Chat IA - Analyser avec l'intelligence artificielle"
                 >
@@ -393,9 +413,38 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
         </div>
       </div>
 
-      {/* Contenu principal - Notes seules ou SplitView avec PDF */}
+      {/* Contenu principal - Notes seules, SplitView double, ou TripleSplitView */}
       <div className="flex-1 bg-white" style={{ height: 'calc(100vh - 90px)' }}>
-        {isPdfOpen && hasPDF() ? (
+        {isPdfOpen && isAIChatOpen && hasPDF() ? (
+          /* Triple Split View - Chat IA à gauche, Notes au centre, PDF à droite */
+          <TripleSplitView
+            leftPanel={
+              <div className="h-full bg-white">
+                <AIChat paper={paper} />
+              </div>
+            }
+            centerPanel={
+              <div className="h-full bg-white">
+                <BlockEditor
+                  articleId={paperId.toString()}
+                  initialBlocks={blocks}
+                  onSave={saveNotes}
+                />
+              </div>
+            }
+            rightPanel={
+              <PDFViewer
+                paperId={paperId}
+                className="h-full"
+              />
+            }
+            defaultLeftPercentage={tripleLeftPercentage}
+            defaultRightPercentage={tripleRightPercentage}
+            onSplitChange={handleTripleSplitChange}
+            minPanelWidth={250}
+          />
+        ) : isPdfOpen && hasPDF() ? (
+          /* Split View avec PDF à droite */
           <SplitView
             leftPanel={
               <div className="h-full bg-white">
@@ -417,7 +466,30 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
             minLeftWidth={350}
             minRightWidth={350}
           />
+        ) : isAIChatOpen && hasPDF() ? (
+          /* Split View avec Chat IA à gauche */
+          <SplitView
+            leftPanel={
+              <div className="h-full bg-white">
+                <AIChat paper={paper} />
+              </div>
+            }
+            rightPanel={
+              <div className="h-full bg-white">
+                <BlockEditor
+                  articleId={paperId.toString()}
+                  initialBlocks={blocks}
+                  onSave={saveNotes}
+                />
+              </div>
+            }
+            defaultSplitPercentage={aiChatSplitPercentage}
+            onSplitChange={handleAIChatSplitChange}
+            minLeftWidth={350}
+            minRightWidth={350}
+          />
         ) : (
+          /* Vue normale - Notes uniquement */
           <div className="h-full">
             <BlockEditor
               articleId={paperId.toString()}
@@ -428,39 +500,51 @@ const PaperNotes: React.FC<PaperNotesProps> = ({ paperId }) => {
         )}
       </div>
 
-      {/* Bouton flottant pour la vue split */}
+      {/* Boutons flottants pour les vues split */}
       {hasPDF() && (
-        <button
-          onClick={handlePDFToggle}
-          className={`fixed right-4 top-1/2 transform -translate-y-1/2 z-20 transition-all duration-300 group ${
-            isPdfOpen
-              ? 'bg-blue-600 hover:bg-blue-700 shadow-lg'
-              : 'bg-gray-200 hover:bg-gray-300 hover:shadow-lg'
-          } rounded-full p-3`}
-          title={isPdfOpen ? "Fermer la vue split" : "Ouvrir en vue split"}
-        >
-          <div className={`transition-all duration-300 ${
-            isPdfOpen ? 'scale-100 opacity-100' : 'scale-75 opacity-60 group-hover:scale-100 group-hover:opacity-100'
-          }`}>
-            {isPdfOpen ? (
-              <X className="w-5 h-5 text-white" />
-            ) : (
-              <PanelRightOpen className="w-5 h-5 text-gray-700" />
-            )}
-          </div>
-        </button>
-      )}
+        <>
+          {/* Bouton PDF - à droite */}
+          <button
+            onClick={handlePDFToggle}
+            className={`fixed right-4 top-1/2 transform -translate-y-1/2 z-20 transition-all duration-300 group ${
+              isPdfOpen
+                ? 'bg-red-600 hover:bg-red-700 shadow-lg'
+                : 'bg-gray-200 hover:bg-gray-300 hover:shadow-lg'
+            } rounded-full p-3`}
+            title={isPdfOpen ? "Fermer le PDF" : "Ouvrir le PDF en split view"}
+          >
+            <div className={`transition-all duration-300 ${
+              isPdfOpen ? 'scale-100 opacity-100' : 'scale-75 opacity-60 group-hover:scale-100 group-hover:opacity-100'
+            }`}>
+              {isPdfOpen ? (
+                <X className="w-5 h-5 text-white" />
+              ) : (
+                <PanelRightOpen className="w-5 h-5 text-gray-700" />
+              )}
+            </div>
+          </button>
 
-      {/* Modal Chat IA */}
-      {isAIChatOpen && paper && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full h-5/6 flex flex-col">
-            <AIChat
-              paper={paper}
-              onClose={() => setIsAIChatOpen(false)}
-            />
-          </div>
-        </div>
+          {/* Bouton Chat IA - à gauche */}
+          <button
+            onClick={handleAIChatToggle}
+            className={`fixed left-4 top-1/2 transform -translate-y-1/2 z-20 transition-all duration-300 group ${
+              isAIChatOpen
+                ? 'bg-purple-600 hover:bg-purple-700 shadow-lg'
+                : 'bg-gray-200 hover:bg-gray-300 hover:shadow-lg'
+            } rounded-full p-3`}
+            title={isAIChatOpen ? "Fermer le Chat IA" : "Ouvrir le Chat IA en split view"}
+          >
+            <div className={`transition-all duration-300 ${
+              isAIChatOpen ? 'scale-100 opacity-100' : 'scale-75 opacity-60 group-hover:scale-100 group-hover:opacity-100'
+            }`}>
+              {isAIChatOpen ? (
+                <X className="w-5 h-5 text-white" />
+              ) : (
+                <MessageCircle className="w-5 h-5 text-gray-700" />
+              )}
+            </div>
+          </button>
+        </>
       )}
     </div>
   );

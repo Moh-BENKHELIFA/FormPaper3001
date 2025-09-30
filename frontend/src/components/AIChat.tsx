@@ -4,7 +4,6 @@ import { Paper } from '../types/Paper';
 
 interface AIChatProps {
   paper: Paper;
-  onClose?: () => void;
 }
 
 interface Message {
@@ -14,17 +13,21 @@ interface Message {
   timestamp: Date;
 }
 
-const AIChat: React.FC<AIChatProps> = ({ paper, onClose }) => {
+const AIChat: React.FC<AIChatProps> = ({ paper }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [pdfContext, setPdfContext] = useState<string | null>(null);
   const [contextLoading, setContextLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [installedModels, setInstalledModels] = useState<any[]>([]);
+  const [selectedModel, setSelectedModel] = useState('llama3.1:8b');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     extractPdfText();
+    loadChatHistory();
+    loadInstalledModels();
   }, [paper.id]);
 
   useEffect(() => {
@@ -33,6 +36,63 @@ const AIChat: React.FC<AIChatProps> = ({ paper, onClose }) => {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const loadChatHistory = async () => {
+    try {
+      const response = await fetch(`/api/chat/history/${paper.id}`);
+
+      if (!response.ok) {
+        console.error('Erreur lors du chargement de l\'historique');
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data.exists && data.data.messages.length > 0) {
+        // Convertir les timestamps en objets Date
+        const messagesWithDates = data.data.messages.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        setMessages(messagesWithDates);
+        console.log(`✅ ${messagesWithDates.length} messages chargés depuis l'historique`);
+      }
+    } catch (err) {
+      console.error('Erreur chargement historique:', err);
+    }
+  };
+
+  const saveChatHistory = async (messagesToSave: Message[]) => {
+    try {
+      await fetch(`/api/chat/history/${paper.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages: messagesToSave }),
+      });
+    } catch (err) {
+      console.error('Erreur sauvegarde historique:', err);
+    }
+  };
+
+  const loadInstalledModels = async () => {
+    try {
+      const response = await fetch('/api/ollama/models/installed');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setInstalledModels(data.data);
+          // Si le modèle par défaut n'est pas installé, prendre le premier disponible
+          if (data.data.length > 0 && !data.data.some((m: any) => m.name === selectedModel)) {
+            setSelectedModel(data.data[0].name);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Erreur chargement modèles:', err);
+    }
   };
 
   const extractPdfText = async () => {
@@ -53,7 +113,8 @@ const AIChat: React.FC<AIChatProps> = ({ paper, onClose }) => {
       }
 
       const data = await response.json();
-      setPdfContext(data.text);
+      console.log('PDF extraction response:', data);
+      setPdfContext(data.data?.text || data.text);
 
       // Message de bienvenue avec contexte du document
       const welcomeMessage: Message = {
@@ -82,7 +143,8 @@ const AIChat: React.FC<AIChatProps> = ({ paper, onClose }) => {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const newUserMessage = userMessage;
+    setMessages(prev => [...prev, newUserMessage]);
     setInputMessage('');
     setIsLoading(true);
 
@@ -95,7 +157,8 @@ const AIChat: React.FC<AIChatProps> = ({ paper, onClose }) => {
         body: JSON.stringify({
           message: message,
           context: pdfContext,
-          modelName: 'llama3.1:8b'
+          modelName: selectedModel,
+          history: messages // Envoyer l'historique à l'IA
         }),
       });
 
@@ -104,15 +167,21 @@ const AIChat: React.FC<AIChatProps> = ({ paper, onClose }) => {
       }
 
       const data = await response.json();
+      console.log('AI response:', data);
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: data.response,
+        content: data.data?.response || data.response || 'Pas de réponse',
         timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages(prev => {
+        const updatedMessages = [...prev, aiMessage];
+        // Sauvegarder l'historique après chaque échange
+        saveChatHistory(updatedMessages);
+        return updatedMessages;
+      });
 
     } catch (err) {
       console.error('Erreur chat:', err);
@@ -133,7 +202,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper, onClose }) => {
     sendMessage(inputMessage);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage(inputMessage);
@@ -151,14 +220,6 @@ const AIChat: React.FC<AIChatProps> = ({ paper, onClose }) => {
               <p className="text-sm text-gray-600">{paper.title}</p>
             </div>
           </div>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-xl font-bold"
-            >
-              ×
-            </button>
-          )}
         </div>
 
         <div className="flex-1 flex items-center justify-center">
@@ -183,14 +244,6 @@ const AIChat: React.FC<AIChatProps> = ({ paper, onClose }) => {
               <p className="text-sm text-gray-600">{paper.title}</p>
             </div>
           </div>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-xl font-bold"
-            >
-              ×
-            </button>
-          )}
         </div>
 
         <div className="flex-1 flex items-center justify-center">
@@ -220,14 +273,29 @@ const AIChat: React.FC<AIChatProps> = ({ paper, onClose }) => {
             <p className="text-sm text-gray-600 truncate max-w-md">{paper.title}</p>
           </div>
         </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+      </div>
+
+      {/* Sélecteur de modèle */}
+      <div className="p-3 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center space-x-3">
+          <label className="text-sm font-medium text-gray-700">Modèle IA :</label>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="flex-1 text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={isLoading}
           >
-            ×
-          </button>
-        )}
+            {installedModels.length === 0 ? (
+              <option value="">Aucun modèle installé</option>
+            ) : (
+              installedModels.map((model) => (
+                <option key={model.name} value={model.name}>
+                  {model.name} {model.size ? `(${(model.size / 1024 / 1024 / 1024).toFixed(1)} GB)` : ''}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -288,7 +356,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper, onClose }) => {
           <textarea
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             placeholder="Posez votre question sur l'article..."
             className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             rows={1}
