@@ -20,14 +20,16 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
   const [pdfContext, setPdfContext] = useState<string | null>(null);
   const [contextLoading, setContextLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [aiProvider, setAiProvider] = useState<'ollama' | 'groq'>('ollama');
   const [installedModels, setInstalledModels] = useState<any[]>([]);
+  const [groqModels, setGroqModels] = useState<any[]>([]);
   const [selectedModel, setSelectedModel] = useState('llama3.1:8b');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     extractPdfText();
     loadChatHistory();
-    loadInstalledModels();
+    loadAISettings();
   }, [paper.id]);
 
   useEffect(() => {
@@ -77,21 +79,50 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
     }
   };
 
-  const loadInstalledModels = async () => {
+  const loadAISettings = async () => {
     try {
-      const response = await fetch('/api/ollama/models/installed');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          setInstalledModels(data.data);
-          // Si le modèle par défaut n'est pas installé, prendre le premier disponible
-          if (data.data.length > 0 && !data.data.some((m: any) => m.name === selectedModel)) {
-            setSelectedModel(data.data[0].name);
+      // Load AI provider settings
+      const settingsResponse = await fetch('/api/settings');
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json();
+        if (settingsData.success) {
+          const provider = settingsData.data.aiProvider || 'ollama';
+          setAiProvider(provider);
+
+          if (provider === 'groq') {
+            // Load Groq models
+            const groqResponse = await fetch('/api/groq/models');
+            if (groqResponse.ok) {
+              const groqData = await groqResponse.json();
+              if (groqData.success && groqData.data) {
+                setGroqModels(groqData.data);
+                // Set default Groq model
+                const defaultModel = groqData.data.find((m: any) => m.recommended);
+                if (defaultModel) {
+                  setSelectedModel(defaultModel.name);
+                } else if (groqData.data.length > 0) {
+                  setSelectedModel(groqData.data[0].name);
+                }
+              }
+            }
+          } else {
+            // Load Ollama models
+            const ollamaResponse = await fetch('/api/ollama/models/installed');
+            if (ollamaResponse.ok) {
+              const ollamaData = await ollamaResponse.json();
+              if (ollamaData.success && ollamaData.data) {
+                setInstalledModels(ollamaData.data);
+                // Set default Ollama model
+                if (ollamaData.data.length > 0 && !ollamaData.data.some((m: any) => m.name === selectedModel)) {
+                  setSelectedModel(ollamaData.data[0].name);
+                }
+              }
+            }
           }
         }
       }
     } catch (err) {
-      console.error('Erreur chargement modèles:', err);
+      console.error('Erreur chargement paramètres IA:', err);
     }
   };
 
@@ -158,7 +189,8 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
           message: message,
           context: pdfContext,
           modelName: selectedModel,
-          history: messages // Envoyer l'historique à l'IA
+          history: messages, // Envoyer l'historique à l'IA
+          provider: aiProvider // Envoyer le fournisseur sélectionné
         }),
       });
 
@@ -278,21 +310,35 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
       {/* Sélecteur de modèle */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center space-x-3">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Modèle IA :</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            {aiProvider === 'groq' ? 'Groq' : 'Ollama'} :
+          </label>
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value)}
             className="flex-1 text-sm border border-gray-300 dark:border-gray-700 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             disabled={isLoading}
           >
-            {installedModels.length === 0 ? (
-              <option value="">Aucun modèle installé</option>
+            {aiProvider === 'groq' ? (
+              groqModels.length === 0 ? (
+                <option value="">Aucun modèle Groq disponible</option>
+              ) : (
+                groqModels.map((model) => (
+                  <option key={model.name} value={model.name}>
+                    {model.displayName || model.name}
+                  </option>
+                ))
+              )
             ) : (
-              installedModels.map((model) => (
-                <option key={model.name} value={model.name}>
-                  {model.name} {model.size ? `(${(model.size / 1024 / 1024 / 1024).toFixed(1)} GB)` : ''}
-                </option>
-              ))
+              installedModels.length === 0 ? (
+                <option value="">Aucun modèle installé</option>
+              ) : (
+                installedModels.map((model) => (
+                  <option key={model.name} value={model.name}>
+                    {model.name} {model.size ? `(${(model.size / 1024 / 1024 / 1024).toFixed(1)} GB)` : ''}
+                  </option>
+                ))
+              )
             )}
           </select>
         </div>

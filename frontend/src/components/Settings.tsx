@@ -28,6 +28,10 @@ const Settings: React.FC = () => {
   const [tagColor, setTagColor] = useState('#3B82F6');
 
   // AI/Ollama states
+  const [aiProvider, setAiProvider] = useState<'ollama' | 'groq'>('ollama');
+  const [groqApiKey, setGroqApiKey] = useState('');
+  const [hasGroqApiKey, setHasGroqApiKey] = useState(false);
+  const [groqModels, setGroqModels] = useState<any[]>([]);
   const [ollamaStatus, setOllamaStatus] = useState<{
     installed: boolean;
     running: boolean;
@@ -77,6 +81,22 @@ const Settings: React.FC = () => {
     try {
       setIsLoadingAI(true);
 
+      // Load AI settings
+      const settingsResponse = await fetch('http://localhost:5004/api/settings');
+      const settingsData = await settingsResponse.json();
+
+      if (settingsData.success) {
+        setAiProvider(settingsData.data.aiProvider || 'ollama');
+        setHasGroqApiKey(settingsData.data.hasGroqApiKey || false);
+      }
+
+      // Load Groq models
+      const groqModelsResponse = await fetch('http://localhost:5004/api/groq/models');
+      const groqModelsData = await groqModelsResponse.json();
+      if (groqModelsData.success) {
+        setGroqModels(groqModelsData.data);
+      }
+
       // Charger le statut d'Ollama
       const statusResponse = await fetch('http://localhost:5004/api/ollama/status');
       const statusData = await statusResponse.json();
@@ -98,6 +118,55 @@ const Settings: React.FC = () => {
       console.error('Error loading Ollama data:', err);
     } finally {
       setIsLoadingAI(false);
+    }
+  };
+
+  const handleSaveAiProvider = async (provider: 'ollama' | 'groq') => {
+    try {
+      const response = await fetch('http://localhost:5004/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ aiProvider: provider }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setAiProvider(provider);
+        success('Paramètres enregistrés', `Fournisseur IA: ${provider === 'ollama' ? 'Ollama (Local)' : 'Groq (API)'}`);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err) {
+      error('Erreur', 'Impossible d\'enregistrer le fournisseur IA');
+      console.error('Error saving AI provider:', err);
+    }
+  };
+
+  const handleSaveGroqApiKey = async () => {
+    try {
+      const response = await fetch('http://localhost:5004/api/groq/api-key', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ apiKey: groqApiKey }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setHasGroqApiKey(true);
+        setGroqApiKey(''); // Clear input for security
+        success('Clé API enregistrée', 'La clé API Groq a été validée et enregistrée avec succès');
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      error('Erreur', err.message || 'Clé API invalide ou erreur de connexion');
+      console.error('Error saving Groq API key:', err);
     }
   };
 
@@ -584,10 +653,118 @@ const Settings: React.FC = () => {
 
   const renderAISettings = () => (
     <div className="space-y-6">
-      {/* Statut Ollama */}
+      {/* AI Provider Selection */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Configuration Ollama</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Fournisseur d'IA</h3>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Choisissez le fournisseur d'IA pour le chat avec vos articles
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => handleSaveAiProvider('ollama')}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                aiProvider === 'ollama'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">Ollama</h4>
+                {aiProvider === 'ollama' && <span className="text-blue-500">✓</span>}
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">IA locale, gratuite, aucune connexion Internet requise</p>
+            </button>
+
+            <button
+              onClick={() => handleSaveAiProvider('groq')}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                aiProvider === 'groq'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">Groq</h4>
+                {aiProvider === 'groq' && <span className="text-blue-500">✓</span>}
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">API cloud, ultra-rapide, nécessite une clé API</p>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Groq Configuration */}
+      {aiProvider === 'groq' && (
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Configuration Groq</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Clé API Groq
+              </label>
+              <div className="flex space-x-2">
+                <input
+                  type="password"
+                  value={groqApiKey}
+                  onChange={(e) => setGroqApiKey(e.target.value)}
+                  placeholder={hasGroqApiKey ? 'Clé API configurée' : 'Entrez votre clé API Groq'}
+                  className="flex-1 input-field bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                />
+                <button
+                  onClick={handleSaveGroqApiKey}
+                  disabled={!groqApiKey}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  Enregistrer
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                {hasGroqApiKey ? (
+                  <span className="text-green-600 dark:text-green-400">✓ Clé API configurée</span>
+                ) : (
+                  <>Obtenez votre clé API gratuite sur <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">console.groq.com</a></>
+                )}
+              </p>
+            </div>
+
+            {hasGroqApiKey && groqModels.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Modèles disponibles
+                </label>
+                <div className="space-y-2">
+                  {groqModels.map((model) => (
+                    <div
+                      key={model.name}
+                      className="flex items-start space-x-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{model.displayName}</h4>
+                          {model.recommended && (
+                            <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">Recommandé</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{model.description}</p>
+                        {model.contextWindow && (
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Context: {model.contextWindow.toLocaleString()} tokens</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Statut Ollama */}
+      {aiProvider === 'ollama' && (
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Configuration Ollama</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -648,12 +825,11 @@ const Settings: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Gestion des modèles */}
-      {ollamaStatus.running && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
+        {/* Gestion des modèles */}
+        {ollamaStatus.running && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Modèles disponibles</h3>
             <button
               onClick={handleOpenModelSearch}
@@ -864,6 +1040,8 @@ const Settings: React.FC = () => {
               </div>
             </div>
           </div>
+          </div>
+        )}
         </div>
       )}
     </div>

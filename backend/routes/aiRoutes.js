@@ -4,9 +4,21 @@ const { promisify } = require('util');
 const fs = require('fs-extra');
 const path = require('path');
 const pdf = require('pdf-parse');
+const Groq = require('groq-sdk');
 
 const router = express.Router();
 const execAsync = promisify(exec);
+
+// Initialize Groq client (will be set with API key from settings)
+let groqClient = null;
+
+const initGroqClient = (apiKey) => {
+  if (apiKey) {
+    groqClient = new Groq({ apiKey });
+    return true;
+  }
+  return false;
+};
 
 // Vérifier le statut d'Ollama
 router.get('/ollama/status', async (req, res) => {
@@ -449,10 +461,324 @@ router.post('/pdf/extract', async (req, res) => {
   }
 });
 
+// Get available Groq models
+router.get('/groq/models', async (req, res) => {
+  try {
+    const groqModels = [
+      // Llama 3.3 (Latest)
+      {
+        name: 'llama-3.3-70b-versatile',
+        displayName: 'Llama 3.3 70B Versatile',
+        description: 'Le plus récent et puissant, excellent pour l\'analyse détaillée',
+        contextWindow: 128000,
+        recommended: true
+      },
+      {
+        name: 'llama-3.3-70b-specdec',
+        displayName: 'Llama 3.3 70B Speculative Decoding',
+        description: 'Version optimisée pour la vitesse avec décodage spéculatif',
+        contextWindow: 8192,
+        recommended: false
+      },
+
+      // Llama 3.1
+      {
+        name: 'llama-3.1-8b-instant',
+        displayName: 'Llama 3.1 8B Instant',
+        description: 'Ultra-rapide, bon équilibre performance/vitesse',
+        contextWindow: 128000,
+        recommended: true
+      },
+      {
+        name: 'llama-3.1-70b-versatile',
+        displayName: 'Llama 3.1 70B Versatile',
+        description: 'Très puissant, polyvalent pour toutes tâches',
+        contextWindow: 128000,
+        recommended: false
+      },
+
+      // Llama 3.2 (Vision capable)
+      {
+        name: 'llama-3.2-1b-preview',
+        displayName: 'Llama 3.2 1B Preview',
+        description: 'Modèle ultra-léger, très rapide',
+        contextWindow: 128000,
+        recommended: false
+      },
+      {
+        name: 'llama-3.2-3b-preview',
+        displayName: 'Llama 3.2 3B Preview',
+        description: 'Léger et efficace',
+        contextWindow: 128000,
+        recommended: false
+      },
+      {
+        name: 'llama-3.2-11b-vision-preview',
+        displayName: 'Llama 3.2 11B Vision',
+        description: 'Capable d\'analyser des images (multimodal)',
+        contextWindow: 128000,
+        recommended: false
+      },
+      {
+        name: 'llama-3.2-90b-vision-preview',
+        displayName: 'Llama 3.2 90B Vision',
+        description: 'Très puissant avec capacité vision (multimodal)',
+        contextWindow: 128000,
+        recommended: false
+      },
+
+      // Llama 3 (Original)
+      {
+        name: 'llama3-8b-8192',
+        displayName: 'Llama 3 8B',
+        description: 'Rapide et efficace',
+        contextWindow: 8192,
+        recommended: false
+      },
+      {
+        name: 'llama3-70b-8192',
+        displayName: 'Llama 3 70B',
+        description: 'Puissant et rapide',
+        contextWindow: 8192,
+        recommended: false
+      },
+      {
+        name: 'llama-guard-3-8b',
+        displayName: 'Llama Guard 3 8B',
+        description: 'Modèle de modération et sécurité',
+        contextWindow: 8192,
+        recommended: false
+      },
+
+      // Mixtral (Mistral AI)
+      {
+        name: 'mixtral-8x7b-32768',
+        displayName: 'Mixtral 8x7B',
+        description: 'Excellent pour le raisonnement complexe',
+        contextWindow: 32768,
+        recommended: false
+      },
+
+      // Gemma (Google)
+      {
+        name: 'gemma2-9b-it',
+        displayName: 'Gemma 2 9B',
+        description: 'Optimisé par Google, très précis',
+        contextWindow: 8192,
+        recommended: false
+      },
+      {
+        name: 'gemma-7b-it',
+        displayName: 'Gemma 7B',
+        description: 'Léger et efficace, par Google',
+        contextWindow: 8192,
+        recommended: false
+      },
+
+      // Llama 3 Groq Tool Use (optimisé pour function calling)
+      {
+        name: 'llama3-groq-8b-8192-tool-use-preview',
+        displayName: 'Llama 3 Groq 8B Tool Use',
+        description: 'Optimisé pour l\'utilisation d\'outils et function calling',
+        contextWindow: 8192,
+        recommended: false
+      },
+      {
+        name: 'llama3-groq-70b-8192-tool-use-preview',
+        displayName: 'Llama 3 Groq 70B Tool Use',
+        description: 'Version puissante optimisée pour l\'utilisation d\'outils',
+        contextWindow: 8192,
+        recommended: false
+      },
+
+      // DeepSeek
+      {
+        name: 'deepseek-r1-distill-llama-70b',
+        displayName: 'DeepSeek R1 Distill Llama 70B',
+        description: 'Modèle DeepSeek distillé, excellent raisonnement',
+        contextWindow: 128000,
+        recommended: false
+      },
+
+      // Llama 4 Maverick (Experimental)
+      {
+        name: 'llama-4-maverick-405b',
+        displayName: 'Llama 4 Maverick 405B',
+        description: 'Modèle expérimental très puissant (preview)',
+        contextWindow: 128000,
+        recommended: false
+      },
+
+      // OpenAI GPT OSS
+      {
+        name: 'openai/gpt-oss-120b',
+        displayName: 'OpenAI GPT OSS 120B',
+        description: 'Version open-source expérimentale d\'OpenAI GPT',
+        contextWindow: 32768,
+        recommended: false
+      },
+
+      // Qwen (Alibaba)
+      {
+        name: 'qwen-2.5-72b',
+        displayName: 'Qwen 2.5 72B',
+        description: 'Modèle puissant d\'Alibaba, excellent pour le code',
+        contextWindow: 32768,
+        recommended: false
+      },
+
+      // Distil-Whisper (pour transcription audio)
+      {
+        name: 'distil-whisper-large-v3-en',
+        displayName: 'Distil-Whisper Large v3 English',
+        description: 'Transcription audio en anglais (Speech-to-Text)',
+        contextWindow: null,
+        recommended: false
+      },
+      {
+        name: 'whisper-large-v3',
+        displayName: 'Whisper Large v3',
+        description: 'Transcription audio multilingue (Speech-to-Text)',
+        contextWindow: null,
+        recommended: false
+      },
+      {
+        name: 'whisper-large-v3-turbo',
+        displayName: 'Whisper Large v3 Turbo',
+        description: 'Transcription audio rapide multilingue',
+        contextWindow: null,
+        recommended: false
+      }
+    ];
+
+    res.json({
+      success: true,
+      data: groqModels
+    });
+  } catch (error) {
+    console.error('Error getting Groq models:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des modèles Groq'
+    });
+  }
+});
+
+// Set Groq API key
+router.post('/groq/api-key', async (req, res) => {
+  try {
+    const { apiKey } = req.body;
+
+    if (!apiKey) {
+      return res.status(400).json({
+        success: false,
+        error: 'La clé API est requise'
+      });
+    }
+
+    // Test the API key
+    const testClient = new Groq({ apiKey });
+    await testClient.chat.completions.create({
+      messages: [{ role: 'user', content: 'test' }],
+      model: 'llama-3.1-8b-instant',
+      max_tokens: 10
+    });
+
+    // If successful, save and initialize
+    initGroqClient(apiKey);
+
+    // Save to settings file
+    const settingsPath = path.join(__dirname, '..', 'settings.json');
+    let settings = {};
+
+    if (await fs.pathExists(settingsPath)) {
+      settings = await fs.readJson(settingsPath);
+    }
+
+    settings.groqApiKey = apiKey;
+    await fs.writeJson(settingsPath, settings, { spaces: 2 });
+
+    res.json({
+      success: true,
+      message: 'Clé API Groq enregistrée avec succès'
+    });
+  } catch (error) {
+    console.error('Error setting Groq API key:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Clé API invalide ou erreur de connexion'
+    });
+  }
+});
+
+// Get settings (including AI provider preference)
+router.get('/settings', async (req, res) => {
+  try {
+    const settingsPath = path.join(__dirname, '..', 'settings.json');
+
+    if (await fs.pathExists(settingsPath)) {
+      const settings = await fs.readJson(settingsPath);
+
+      // Don't send the full API key, just whether it exists
+      res.json({
+        success: true,
+        data: {
+          aiProvider: settings.aiProvider || 'ollama',
+          hasGroqApiKey: !!settings.groqApiKey
+        }
+      });
+    } else {
+      res.json({
+        success: true,
+        data: {
+          aiProvider: 'ollama',
+          hasGroqApiKey: false
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error getting settings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des paramètres'
+    });
+  }
+});
+
+// Save settings
+router.post('/settings', async (req, res) => {
+  try {
+    const { aiProvider } = req.body;
+    const settingsPath = path.join(__dirname, '..', 'settings.json');
+
+    let settings = {};
+    if (await fs.pathExists(settingsPath)) {
+      settings = await fs.readJson(settingsPath);
+    }
+
+    if (aiProvider) {
+      settings.aiProvider = aiProvider;
+    }
+
+    await fs.writeJson(settingsPath, settings, { spaces: 2 });
+
+    res.json({
+      success: true,
+      message: 'Paramètres enregistrés avec succès'
+    });
+  } catch (error) {
+    console.error('Error saving settings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la sauvegarde des paramètres'
+    });
+  }
+});
+
 // Chat avec l'IA sur un document
 router.post('/chat', async (req, res) => {
   try {
-    const { message, context, modelName = 'llama3.1:8b', history = [] } = req.body;
+    const { message, context, modelName = 'llama3.1:8b', history = [], provider = 'ollama' } = req.body;
 
     if (!message) {
       return res.status(400).json({
@@ -504,40 +830,114 @@ RÉPONSE :`;
       fullPrompt = `Tu es un assistant IA pour l'analyse d'articles scientifiques. Réponds en français à cette question : ${message}`;
     }
 
-    // Appeler Ollama
-    const response = await fetch('http://localhost:11434/api/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: modelName,
-        prompt: fullPrompt,
-        stream: false,
-        options: {
-          temperature: 0.1, // Plus déterministe pour l'analyse académique
-          top_p: 0.9,
-          top_k: 40
+    if (provider === 'groq') {
+      // Use Groq
+      if (!groqClient) {
+        // Try to load API key from settings
+        const settingsPath = path.join(__dirname, '..', 'settings.json');
+        if (await fs.pathExists(settingsPath)) {
+          const settings = await fs.readJson(settingsPath);
+          if (settings.groqApiKey) {
+            initGroqClient(settings.groqApiKey);
+          }
         }
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Ollama error: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    res.json({
-      success: true,
-      data: {
-        response: data.response,
-        model: modelName,
-        timestamp: new Date().toISOString(),
-        tokenCount: data.eval_count || 0,
-        processingTime: data.eval_duration ? Math.round(data.eval_duration / 1000000) : 0 // Convert to ms
       }
-    });
+
+      if (!groqClient) {
+        return res.status(400).json({
+          success: false,
+          error: 'Clé API Groq non configurée'
+        });
+      }
+
+      // Build messages for Groq (chat format)
+      const messages = [];
+
+      if (context) {
+        const contextText = typeof context === 'string' ? context : (context.text || '');
+        if (contextText) {
+          messages.push({
+            role: 'system',
+            content: `Tu es un assistant IA spécialisé dans l'analyse d'articles de recherche scientifique. Voici le contenu de l'article à analyser :\n\n${contextText.substring(0, 30000)}`
+          });
+        }
+      }
+
+      // Add history
+      if (history && history.length > 0) {
+        history.slice(-6).forEach(msg => {
+          messages.push({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          });
+        });
+      }
+
+      // Add current message
+      messages.push({
+        role: 'user',
+        content: message
+      });
+
+      const startTime = Date.now();
+      const completion = await groqClient.chat.completions.create({
+        model: modelName,
+        messages: messages,
+        temperature: 0.1,
+        max_tokens: 2048,
+      });
+
+      const processingTime = Date.now() - startTime;
+
+      res.json({
+        success: true,
+        data: {
+          response: completion.choices[0]?.message?.content || 'Pas de réponse',
+          model: modelName,
+          timestamp: new Date().toISOString(),
+          tokenCount: completion.usage?.total_tokens || 0,
+          processingTime: processingTime,
+          provider: 'groq'
+        }
+      });
+
+    } else {
+      // Use Ollama (existing code)
+      const response = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: modelName,
+          prompt: fullPrompt,
+          stream: false,
+          options: {
+            temperature: 0.1,
+            top_p: 0.9,
+            top_k: 40
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ollama error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      res.json({
+        success: true,
+        data: {
+          response: data.response,
+          model: modelName,
+          timestamp: new Date().toISOString(),
+          tokenCount: data.eval_count || 0,
+          processingTime: data.eval_duration ? Math.round(data.eval_duration / 1000000) : 0,
+          provider: 'ollama'
+        }
+      });
+    }
 
   } catch (error) {
     console.error('Error in AI chat:', error);
