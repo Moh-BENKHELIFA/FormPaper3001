@@ -319,9 +319,9 @@ const MainContent: React.FC<MainContentProps> = ({
               />
             )}
             <div className="flex-1">
-              <h3 className="font-medium text-gray-900 mb-1">{paper.title}</h3>
-              <p className="text-sm text-gray-600 mb-1">{paper.authors}</p>
-              <p className="text-xs text-gray-500">{paper.conference}</p>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-1">{paper.title}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{paper.authors}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500">{paper.conference}</p>
               <span className={`paper-status-badge paper-status-${paper.reading_status} mt-2`}>
                 {paper.reading_status}
               </span>

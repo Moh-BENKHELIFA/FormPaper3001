@@ -31,6 +31,24 @@ export interface Tag {
   color?: string;
 }
 
+export interface Collection {
+  id: number;
+  name: string;
+  parent_id?: number | null;
+  created_at: string;
+  updated_at: string;
+  paper_count?: number;
+  // Zotero compatibility fields
+  zotero_key?: string | null;
+  zotero_version?: number | null;
+}
+
+export interface CollectionRelation {
+  collection_id: number;
+  paper_id: number;
+  added_at: string;
+}
+
 export interface Description {
   id: number;
   paper_id: number;

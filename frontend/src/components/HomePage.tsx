@@ -19,6 +19,7 @@ const HomePage: React.FC = () => {
     favorite: 0,
   });
   const [filteredPapers, setFilteredPapers] = useState<Paper[]>([]);
+  const [activeStatFilter, setActiveStatFilter] = useState<string | null>(null);
 
   useEffect(() => {
     loadPapers();
@@ -69,11 +70,48 @@ const HomePage: React.FC = () => {
 
   const handleFilterChange = (filtered: Paper[]) => {
     setFilteredPapers(filtered);
+    setActiveStatFilter(null); // Reset stat filter when using TopMenu filters
+  };
+
+  const handleStatFilterClick = (filterType: string) => {
+    if (activeStatFilter === filterType) {
+      // Si on clique sur le même filtre, on le désactive
+      setActiveStatFilter(null);
+      setFilteredPapers(papers);
+      return;
+    }
+
+    setActiveStatFilter(filterType);
+
+    let filtered = [...papers];
+    switch (filterType) {
+      case 'total':
+        filtered = papers;
+        break;
+      case 'unread':
+        filtered = papers.filter(p => p.reading_status === 'unread');
+        break;
+      case 'reading':
+        filtered = papers.filter(p => p.reading_status === 'reading');
+        break;
+      case 'read':
+        filtered = papers.filter(p => p.reading_status === 'read');
+        break;
+      case 'favorite':
+        filtered = papers.filter(p => p.is_favorite === 1);
+        break;
+    }
+    setFilteredPapers(filtered);
   };
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar stats={stats} onStatsRefresh={loadStats} />
+      <Sidebar
+        stats={stats}
+        onStatsRefresh={loadStats}
+        onStatFilterClick={handleStatFilterClick}
+        activeStatFilter={activeStatFilter}
+      />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopMenu
