@@ -69,7 +69,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
           Favoris
         </label>
         <div className="space-y-2">
@@ -81,7 +81,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
               onChange={(e) => handleFilterChange('showFavorites', e.target.checked)}
               className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
             />
-            <label htmlFor="showFavorites" className="ml-2 text-sm text-gray-700">
+            <label htmlFor="showFavorites" className="ml-2 text-sm text-gray-700 dark:text-gray-200">
               Favoris uniquement
             </label>
           </div>
@@ -93,7 +93,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
               onChange={(e) => handleFilterChange('sortFavorites', e.target.checked)}
               className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
             />
-            <label htmlFor="sortFavorites" className="ml-2 text-sm text-gray-700">
+            <label htmlFor="sortFavorites" className="ml-2 text-sm text-gray-700 dark:text-gray-200">
               Trier favoris en premier
             </label>
           </div>
@@ -101,7 +101,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
           Statut de lecture
         </label>
         <select
@@ -118,7 +118,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
           Conférence/Journal
         </label>
         <select
@@ -136,7 +136,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
           Trier par
         </label>
         <select
@@ -153,7 +153,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
           Ordre
         </label>
         <select
@@ -169,13 +169,13 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
 
       {/* Section Tags séparée */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
           Filtrer par Tags
         </label>
         {tagsLoading ? (
-          <div className="text-sm text-gray-500">Chargement des tags...</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Chargement des tags...</div>
         ) : availableTags.length === 0 ? (
-          <div className="text-sm text-gray-500">Aucun tag disponible</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Aucun tag disponible</div>
         ) : (
           <div className="flex flex-wrap gap-3 max-h-32 overflow-y-auto p-1">
             {availableTags.map((tag) => (
@@ -185,7 +185,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
                 className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200 border ${
                   filters.tags?.includes(tag.id)
                     ? 'text-white shadow-sm scale-105'
-                    : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50 hover:scale-105'
+                    : 'text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:scale-105'
                 }`}
                 style={{
                   backgroundColor: filters.tags?.includes(tag.id) && tag.color ? tag.color : undefined,
