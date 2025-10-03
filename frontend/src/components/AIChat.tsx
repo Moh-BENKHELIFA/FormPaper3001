@@ -191,10 +191,8 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
           message: message,
           context: pdfContext,
           modelName: selectedModel,
-          history: messages, // Envoyer l'historique à l'IA
-          provider: aiProvider, // Envoyer le fournisseur sélectionné
-          paperId: paper.id, // Envoyer l'ID du paper pour RAG
-          useRAG: false // Désactiver RAG pour l'instant (pas installé)
+          history: messages,
+          provider: aiProvider
         }),
       });
 
