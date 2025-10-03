@@ -8,9 +8,11 @@ interface AIChatProps {
 
 interface Message {
   id: string;
-  type: 'user' | 'ai';
+  type: 'user' | 'ai' | 'error';
   content: string;
   timestamp: Date;
+  errorType?: 'token_limit' | 'network' | 'other';
+  suggestion?: string;
 }
 
 const AIChat: React.FC<AIChatProps> = ({ paper }) => {
@@ -190,16 +192,43 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
           context: pdfContext,
           modelName: selectedModel,
           history: messages, // Envoyer l'historique à l'IA
-          provider: aiProvider // Envoyer le fournisseur sélectionné
+          provider: aiProvider, // Envoyer le fournisseur sélectionné
+          paperId: paper.id, // Envoyer l'ID du paper pour RAG
+          useRAG: false // Désactiver RAG pour l'instant (pas installé)
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Erreur lors de la communication avec l'IA: ${response.statusText}`);
-      }
-
       const data = await response.json();
       console.log('AI response:', data);
+
+      // Gérer les erreurs du backend
+      if (!response.ok || !data.success) {
+        let errorContent = 'Désolé, une erreur s\'est produite lors de la communication avec l\'IA.';
+        let errorType: 'token_limit' | 'network' | 'other' = 'other';
+        let suggestion = '';
+
+        if (data.error === 'token_limit_exceeded') {
+          errorContent = data.message || 'Limite de tokens dépassée';
+          errorType = 'token_limit';
+          suggestion = data.details?.suggestion || 'Essayez un modèle avec une limite plus élevée';
+        } else if (response.status === 413) {
+          errorContent = 'Le document est trop volumineux pour ce modèle';
+          errorType = 'token_limit';
+          suggestion = 'Utilisez llama-3.3-70b-versatile ou réduisez la taille du document';
+        }
+
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'error',
+          content: errorContent,
+          timestamp: new Date(),
+          errorType,
+          suggestion
+        };
+
+        setMessages(prev => [...prev, errorMessage]);
+        return;
+      }
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -219,9 +248,10 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
       console.error('Erreur chat:', err);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: 'Désolé, une erreur s\'est produite lors de la communication avec l\'IA. Veuillez réessayer.',
+        type: 'error',
+        content: 'Erreur de connexion avec le serveur. Veuillez vérifier que le backend est en cours d\'exécution.',
         timestamp: new Date(),
+        errorType: 'network'
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -354,10 +384,14 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                 message.type === 'user'
                   ? 'bg-blue-600 text-white'
+                  : message.type === 'error'
+                  ? 'bg-red-100 text-red-600'
                   : 'bg-purple-100 text-purple-600'
               }`}>
                 {message.type === 'user' ? (
                   <User className="w-4 h-4" />
+                ) : message.type === 'error' ? (
+                  <AlertCircle className="w-4 h-4" />
                 ) : (
                   <Bot className="w-4 h-4" />
                 )}
@@ -365,11 +399,22 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
               <div className={`rounded-lg p-3 ${
                 message.type === 'user'
                   ? 'bg-blue-600 text-white'
+                  : message.type === 'error'
+                  ? 'bg-red-100 dark:bg-red-900 border-2 border-red-500 text-red-900 dark:text-red-100'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
               }`}>
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                <p className="whitespace-pre-wrap font-medium">{message.content}</p>
+                {message.suggestion && (
+                  <p className="text-sm mt-2 opacity-90 border-t border-red-300 dark:border-red-700 pt-2">
+                    💡 {message.suggestion}
+                  </p>
+                )}
                 <p className={`text-xs mt-1 ${
-                  message.type === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
+                  message.type === 'user'
+                    ? 'text-blue-100'
+                    : message.type === 'error'
+                    ? 'text-red-700 dark:text-red-300'
+                    : 'text-gray-500 dark:text-gray-400'
                 }`}>
                   {message.timestamp.toLocaleTimeString()}
                 </p>

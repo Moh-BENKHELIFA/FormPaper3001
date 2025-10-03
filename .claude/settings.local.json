@@ -27,7 +27,9 @@
       "Bash(npm install:*)",
       "Bash(TASKKILL /F /IM node.exe)",
       "Bash(npm run build:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(where python)",
+      "Bash(where:*)"
     ],
     "deny": [],
     "ask": []

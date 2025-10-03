@@ -437,10 +437,39 @@ router.post('/pdf/extract', async (req, res) => {
     const dataBuffer = await fs.readFile(pdfPath);
     const data = await pdf(dataBuffer);
 
+    // Optimiser le texte pour réduire la taille (tokens)
+    let optimizedText = data.text;
+
+    // 1. Supprimer les espaces multiples et sauts de ligne excessifs
+    optimizedText = optimizedText.replace(/\s+/g, ' ');
+
+    // 2. Supprimer les caractères spéciaux redondants
+    optimizedText = optimizedText.replace(/[•●○▪▫■□◆◇★☆]+/g, '- ');
+
+    // 3. Compresser les séquences de tirets/underscores
+    optimizedText = optimizedText.replace(/[-_]{3,}/g, '');
+
+    // 4. Nettoyer les numéros de pages et headers/footers répétitifs
+    optimizedText = optimizedText.replace(/\b(page\s*\d+|©\s*\d{4})\b/gi, '');
+
+    // 5. Réduire les références bibliographiques en gardant seulement l'essentiel
+    optimizedText = optimizedText.replace(/\[\d+\]\s*/g, ''); // Enlever [1], [2], etc.
+
+    // 6. Trim et nettoyer
+    optimizedText = optimizedText.trim();
+
+    console.log(`📊 Optimisation PDF: ${data.text.length} → ${optimizedText.length} caractères (${Math.round((1 - optimizedText.length / data.text.length) * 100)}% réduction)`);
+
+    // RAG-Anything disabled for now (installation incomplete)
+    // TODO: Complete RAG-Anything installation and re-enable
+
     res.json({
       success: true,
       data: {
-        text: data.text,
+        text: optimizedText, // Utiliser le texte optimisé
+        originalLength: data.text.length,
+        optimizedLength: optimizedText.length,
+        reductionPercent: Math.round((1 - optimizedText.length / data.text.length) * 100),
         pages: data.numpages,
         info: data.info,
         metadata: {
@@ -778,13 +807,49 @@ router.post('/settings', async (req, res) => {
 // Chat avec l'IA sur un document
 router.post('/chat', async (req, res) => {
   try {
-    const { message, context, modelName = 'llama3.1:8b', history = [], provider = 'ollama' } = req.body;
+    const { message, context, modelName = 'llama3.1:8b', history = [], provider = 'ollama', paperId, useRAG = false } = req.body;
 
     if (!message) {
       return res.status(400).json({
         success: false,
         error: 'Le message est requis'
       });
+    }
+
+    // If RAG is enabled and paperId is provided, use RAG-Anything microservice
+    if (useRAG && paperId) {
+      try {
+        const ragResponse = await fetch('http://localhost:5005/query', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            paper_id: paperId,
+            question: message,
+            history: history,
+            llm_model: provider === 'groq' ? modelName : 'ollama/' + modelName
+          })
+        });
+
+        if (ragResponse.ok) {
+          const ragData = await ragResponse.json();
+          return res.json({
+            success: true,
+            data: {
+              response: ragData.response,
+              model: modelName,
+              timestamp: new Date().toISOString(),
+              provider: 'rag-' + provider,
+              rag_enabled: true
+            }
+          });
+        } else {
+          console.log('RAG service unavailable, falling back to standard method');
+        }
+      } catch (ragError) {
+        console.log('RAG service error, falling back to standard method:', ragError.message);
+      }
     }
 
     // Construire le prompt avec le contexte du document et l'historique
@@ -856,9 +921,13 @@ RÉPONSE :`;
       if (context) {
         const contextText = typeof context === 'string' ? context : (context.text || '');
         if (contextText) {
+          // Pour Groq, limiter le contexte à 15000 caractères (~3000 tokens) pour éviter l'erreur 413
+          const maxContextLength = 15000;
+          const truncatedContext = contextText.substring(0, maxContextLength);
+
           messages.push({
             role: 'system',
-            content: `Tu es un assistant IA spécialisé dans l'analyse d'articles de recherche scientifique. Voici le contenu de l'article à analyser :\n\n${contextText.substring(0, 30000)}`
+            content: `Tu es un assistant IA spécialisé dans l'analyse d'articles de recherche scientifique. Voici le contenu de l'article à analyser (extrait) :\n\n${truncatedContext}${contextText.length > maxContextLength ? '\n\n[...Document tronqué pour respecter les limites...]' : ''}`
           });
         }
       }
@@ -880,26 +949,59 @@ RÉPONSE :`;
       });
 
       const startTime = Date.now();
-      const completion = await groqClient.chat.completions.create({
-        model: modelName,
-        messages: messages,
-        temperature: 0.1,
-        max_tokens: 2048,
-      });
 
-      const processingTime = Date.now() - startTime;
-
-      res.json({
-        success: true,
-        data: {
-          response: completion.choices[0]?.message?.content || 'Pas de réponse',
+      try {
+        const completion = await groqClient.chat.completions.create({
           model: modelName,
-          timestamp: new Date().toISOString(),
-          tokenCount: completion.usage?.total_tokens || 0,
-          processingTime: processingTime,
-          provider: 'groq'
+          messages: messages,
+          temperature: 0.1,
+          max_tokens: 2048,
+        });
+
+        const processingTime = Date.now() - startTime;
+
+        res.json({
+          success: true,
+          data: {
+            response: completion.choices[0]?.message?.content || 'Pas de réponse',
+            model: modelName,
+            timestamp: new Date().toISOString(),
+            tokenCount: completion.usage?.total_tokens || 0,
+            processingTime: processingTime,
+            provider: 'groq'
+          }
+        });
+      } catch (groqError) {
+        console.error('❌ Erreur Groq:', groqError.message);
+
+        // Détecter les erreurs de limite de tokens
+        if (groqError.status === 413 || groqError.message?.includes('rate_limit_exceeded') || groqError.message?.includes('Request too large')) {
+          console.error('🚫 LIMITE DE TOKENS DÉPASSÉE:', {
+            model: modelName,
+            error: groqError.message,
+            solution: 'Réduire la taille du contexte ou utiliser un modèle avec limite plus élevée'
+          });
+
+          return res.status(413).json({
+            success: false,
+            error: 'token_limit_exceeded',
+            message: 'La requête dépasse la limite de tokens du modèle. Veuillez réessayer avec un document plus court ou choisir un modèle avec une limite plus élevée.',
+            details: {
+              model: modelName,
+              errorType: 'rate_limit_exceeded',
+              suggestion: 'Utilisez llama-3.3-70b-versatile ou llama-3.1-70b-versatile qui ont une limite de 20,000 TPM'
+            }
+          });
         }
-      });
+
+        // Autres erreurs Groq
+        return res.status(groqError.status || 500).json({
+          success: false,
+          error: 'groq_error',
+          message: `Erreur Groq: ${groqError.message}`,
+          details: groqError
+        });
+      }
 
     } else {
       // Use Ollama (existing code)
