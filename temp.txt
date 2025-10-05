@@ -72,11 +72,10 @@ FormPaper3000/
 │   └── package.json
 │
 ├── MyPapers/                   # Stockage automatique des fichiers
-│   └── paper_{id}/            # Dossier par article
+│   └── paper_{Title_id}/      # Dossier par article
 │       ├── document.pdf       # PDF original
 │       └── images/            # Images extraites
 │
-├── TODO.txt                    # Roadmap du projet
 └── README.md                   # Cette documentation
 ```
 
@@ -307,7 +306,12 @@ npm run preview  # Aperçu du build
 3. **Vues multiples** (tableau, cartes, liste)
 4. **Intégration LLM** pour résumés automatiques et Q&A 
 5. **Mode sombre** complet
+6. **Notifications de succès améliorées** 
 
 
 
 **FormPaper3001** - Un gestionnaire moderne d'articles scientifiques pour la recherche académique.
+
+
+
+ 

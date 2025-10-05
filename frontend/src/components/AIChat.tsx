@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader, AlertCircle } from 'lucide-react';
+import { Send, Bot, User, Loader, AlertCircle, CheckCircle } from 'lucide-react';
 import { Paper } from '../types/Paper';
 
 interface AIChatProps {
@@ -19,7 +19,6 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [pdfContext, setPdfContext] = useState<string | null>(null);
   const [contextLoading, setContextLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [aiProvider, setAiProvider] = useState<'ollama' | 'groq'>('ollama');
@@ -29,7 +28,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    extractPdfText();
+    loadContext();
     loadChatHistory();
     loadAISettings();
   }, [paper.id]);
@@ -40,6 +39,50 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const loadContext = async () => {
+    try {
+      setContextLoading(true);
+      setError(null);
+
+      console.log(`📄 Loading context for paper ${paper.id}`);
+
+      // Extract PDF text
+      const response = await fetch('/api/pdf/extract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ paperId: paper.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement du document');
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log(`✅ PDF loaded: ${data.data.pages} pages, ${data.data.text.length} characters`);
+        setContextLoading(false);
+
+        // Welcome message
+        const welcomeMessage: Message = {
+          id: Date.now().toString(),
+          type: 'ai',
+          content: `Bonjour ! J'ai chargé l'article "${paper.title}" de ${paper.authors}. Je peux maintenant répondre à vos questions sur ce document. Que souhaitez-vous savoir ?`,
+          timestamp: new Date(),
+        };
+        setMessages([welcomeMessage]);
+      } else {
+        throw new Error(data.error || 'Erreur lors du chargement');
+      }
+    } catch (err) {
+      console.error('❌ Error loading context:', err);
+      setError(err instanceof Error ? err.message : 'Erreur lors du chargement du contexte');
+      setContextLoading(false);
+    }
   };
 
   const loadChatHistory = async () => {
@@ -54,7 +97,6 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
       const data = await response.json();
 
       if (data.success && data.data.exists && data.data.messages.length > 0) {
-        // Convertir les timestamps en objets Date
         const messagesWithDates = data.data.messages.map((msg: any) => ({
           ...msg,
           timestamp: new Date(msg.timestamp)
@@ -83,7 +125,6 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
 
   const loadAISettings = async () => {
     try {
-      // Load AI provider settings
       const settingsResponse = await fetch('/api/settings');
       if (settingsResponse.ok) {
         const settingsData = await settingsResponse.json();
@@ -92,13 +133,11 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
           setAiProvider(provider);
 
           if (provider === 'groq') {
-            // Load Groq models
             const groqResponse = await fetch('/api/groq/models');
             if (groqResponse.ok) {
               const groqData = await groqResponse.json();
               if (groqData.success && groqData.data) {
                 setGroqModels(groqData.data);
-                // Set default Groq model
                 const defaultModel = groqData.data.find((m: any) => m.recommended);
                 if (defaultModel) {
                   setSelectedModel(defaultModel.name);
@@ -108,13 +147,11 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
               }
             }
           } else {
-            // Load Ollama models
             const ollamaResponse = await fetch('/api/ollama/models/installed');
             if (ollamaResponse.ok) {
               const ollamaData = await ollamaResponse.json();
               if (ollamaData.success && ollamaData.data) {
                 setInstalledModels(ollamaData.data);
-                // Set default Ollama model
                 if (ollamaData.data.length > 0 && !ollamaData.data.some((m: any) => m.name === selectedModel)) {
                   setSelectedModel(ollamaData.data[0].name);
                 }
@@ -128,46 +165,8 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
     }
   };
 
-  const extractPdfText = async () => {
-    try {
-      setContextLoading(true);
-      setError(null);
-
-      const response = await fetch('/api/pdf/extract', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ paperId: paper.id }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erreur lors de l'extraction du PDF: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('PDF extraction response:', data);
-      setPdfContext(data.data?.text || data.text);
-
-      // Message de bienvenue avec contexte du document
-      const welcomeMessage: Message = {
-        id: Date.now().toString(),
-        type: 'ai',
-        content: `Bonjour ! J'ai analysé l'article "${paper.title}" de ${paper.authors}. Je peux maintenant répondre à vos questions sur ce document. Que souhaitez-vous savoir ?`,
-        timestamp: new Date(),
-      };
-      setMessages([welcomeMessage]);
-
-    } catch (err) {
-      console.error('Erreur extraction PDF:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors du chargement du document');
-    } finally {
-      setContextLoading(false);
-    }
-  };
-
   const sendMessage = async (message: string) => {
-    if (!message.trim() || isLoading || !pdfContext) return;
+    if (!message.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -182,6 +181,21 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
     setIsLoading(true);
 
     try {
+      console.log(`💬 Sending chat message for paper ${paper.id}: "${message}"`);
+
+      // First, get the PDF context
+      const pdfResponse = await fetch('/api/pdf/extract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ paperId: paper.id }),
+      });
+
+      const pdfData = await pdfResponse.json();
+      const context = pdfData.success ? pdfData.data.text : null;
+
+      // Send chat message with context
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -189,7 +203,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
         },
         body: JSON.stringify({
           message: message,
-          context: pdfContext,
+          context: context,
           modelName: selectedModel,
           history: messages,
           provider: aiProvider
@@ -197,9 +211,8 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
       });
 
       const data = await response.json();
-      console.log('AI response:', data);
+      console.log('Chat response:', data);
 
-      // Gérer les erreurs du backend
       if (!response.ok || !data.success) {
         let errorContent = 'Désolé, une erreur s\'est produite lors de la communication avec l\'IA.';
         let errorType: 'token_limit' | 'network' | 'other' = 'other';
@@ -231,19 +244,18 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: data.data?.response || data.response || 'Pas de réponse',
+        content: data.data?.response || 'Pas de réponse',
         timestamp: new Date(),
       };
 
       setMessages(prev => {
         const updatedMessages = [...prev, aiMessage];
-        // Sauvegarder l'historique après chaque échange
         saveChatHistory(updatedMessages);
         return updatedMessages;
       });
 
     } catch (err) {
-      console.error('Erreur chat:', err);
+      console.error('❌ Error chat:', err);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'error',
@@ -276,7 +288,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
           <div className="flex items-center space-x-3">
             <Bot className="w-6 h-6 text-blue-600" />
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Assistant IA</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Assistant IA avec RAG</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">{paper.title}</p>
             </div>
           </div>
@@ -285,8 +297,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Analyse du document en cours...</p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">Extraction du texte PDF</p>
+            <p className="text-gray-600 dark:text-gray-400 font-medium">Chargement du document...</p>
           </div>
         </div>
       </div>
@@ -312,7 +323,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
             <p className="text-red-600 font-medium">Erreur de chargement</p>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{error}</p>
             <button
-              onClick={extractPdfText}
+              onClick={loadContext}
               className="btn-primary mt-4"
             >
               Réessayer
@@ -324,18 +335,8 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-800">
-        <div className="flex items-center space-x-3">
-          <Bot className="w-6 h-6 text-blue-600" />
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Assistant IA</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-md">{paper.title}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Sélecteur de modèle */}
+    <div className="flex flex-col h-full relative">
+      {/* Model selector */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center space-x-3">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -430,7 +431,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
               <div className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg p-3">
                 <div className="flex items-center space-x-2">
                   <Loader className="w-4 h-4 animate-spin" />
-                  <span>L'IA analyse votre question...</span>
+                  <span>L'IA recherche dans les sections pertinentes...</span>
                 </div>
               </div>
             </div>
@@ -461,7 +462,7 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
           </button>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-          Appuyez sur Entrée pour envoyer, Shift+Entrée pour une nouvelle ligne
+          Appuyez sur Entrée pour envoyer, Shift+Entrée pour une nouvelle ligne • Utilise RAG pour rechercher dans le document
         </p>
       </form>
     </div>

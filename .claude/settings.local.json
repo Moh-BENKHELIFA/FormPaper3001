@@ -30,7 +30,10 @@
       "WebFetch(domain:github.com)",
       "Bash(where python)",
       "Bash(where:*)",
-      "Bash(del /q rag-service*.*)"
+      "Bash(del /q rag-service*.*)",
+      "Bash(TASKKILL /F /PID 52980)",
+      "Bash(npx kill-port:*)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []
