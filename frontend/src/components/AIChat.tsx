@@ -41,6 +41,30 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
   const [indexing, setIndexing] = useState(false);
   const [indexingProgress, setIndexingProgress] = useState(0);
 
+  // Format PaperQA response to make it more readable
+  const formatPaperQAResponse = (text: string): string => {
+    // Remove references section (everything after "References")
+    const mainContent = text.split(/\n\nReferences\n/i)[0];
+
+    // Split into sentences and create paragraphs
+    let formatted = mainContent
+      .replace(/\([a-z0-9]+pages\s+[\d-]+\)/gi, '') // Remove inline citations like (reda2025augmentedurbanmodels pages 1-1)
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+
+    // Split into sentences and group them
+    const sentences = formatted.match(/[^.!?]+[.!?]+/g) || [formatted];
+
+    // Group sentences into paragraphs (every 2-3 sentences)
+    const paragraphs: string[] = [];
+    for (let i = 0; i < sentences.length; i += 2) {
+      const paragraph = sentences.slice(i, i + 2).join(' ').trim();
+      if (paragraph) paragraphs.push(paragraph);
+    }
+
+    return paragraphs.join('\n\n');
+  };
+
   useEffect(() => {
     checkPaperQAHealth();
     loadContext();
@@ -314,10 +338,13 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
         console.log('PaperQA response:', data);
 
         if (data.success) {
+          const rawContent = data.formatted_answer || data.response;
+          const formattedContent = formatPaperQAResponse(rawContent);
+
           const aiMessage: Message = {
             id: (Date.now() + 1).toString(),
             type: 'ai',
-            content: data.formatted_answer || data.response,
+            content: formattedContent,
             timestamp: new Date(),
             citations: data.citations || []
           };
