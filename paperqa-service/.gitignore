@@ -1,0 +1,29 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# PaperQA indexes
+indexes/
+*.json
+
+# Logs
+*.log

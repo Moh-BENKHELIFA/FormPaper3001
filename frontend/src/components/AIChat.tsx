@@ -6,6 +6,12 @@ interface AIChatProps {
   paper: Paper;
 }
 
+interface Citation {
+  text: string;
+  score: number;
+  key: string;
+}
+
 interface Message {
   id: string;
   type: 'user' | 'ai' | 'error';
@@ -13,6 +19,7 @@ interface Message {
   timestamp: Date;
   errorType?: 'token_limit' | 'network' | 'other';
   suggestion?: string;
+  citations?: Citation[];
 }
 
 const AIChat: React.FC<AIChatProps> = ({ paper }) => {
@@ -27,11 +34,26 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
   const [selectedModel, setSelectedModel] = useState('llama3.1:8b');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // PaperQA states
+  const [usePaperQA, setUsePaperQA] = useState(false);
+  const [paperQAAvailable, setPaperQAAvailable] = useState(false);
+  const [paperQAIndexed, setPaperQAIndexed] = useState(false);
+  const [indexing, setIndexing] = useState(false);
+  const [indexingProgress, setIndexingProgress] = useState(0);
+
   useEffect(() => {
+    checkPaperQAHealth();
     loadContext();
     loadChatHistory();
     loadAISettings();
   }, [paper.id]);
+
+  // Trigger indexation when PaperQA is toggled on
+  useEffect(() => {
+    if (usePaperQA && paperQAAvailable && !paperQAIndexed && !indexing) {
+      indexWithPaperQA();
+    }
+  }, [usePaperQA]);
 
   useEffect(() => {
     scrollToBottom();
@@ -41,14 +63,106 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const checkPaperQAHealth = async () => {
+    try {
+      const response = await fetch('/api/paperqa/health');
+      const data = await response.json();
+      setPaperQAAvailable(data.available);
+
+      if (data.available) {
+        // Check if paper is already indexed
+        const statusResponse = await fetch(`/api/paperqa/status/${paper.id}`);
+        const statusData = await statusResponse.json();
+        setPaperQAIndexed(statusData.indexed);
+        console.log(`📊 PaperQA available. Paper ${paper.id} indexed: ${statusData.indexed}`);
+      }
+    } catch (err) {
+      console.log('⚠️  PaperQA service not available');
+      setPaperQAAvailable(false);
+    }
+  };
+
+  const indexWithPaperQA = async () => {
+    try {
+      setIndexing(true);
+      setIndexingProgress(0);
+      console.log(`🔨 Indexing paper ${paper.id} with PaperQA...`);
+
+      // Simulate progress over 5 minutes (estimated time)
+      const progressInterval = setInterval(() => {
+        setIndexingProgress(prev => {
+          if (prev >= 95) return 95; // Don't go to 100% until actually complete
+          return prev + 1;
+        });
+      }, 3000); // Increment every 3 seconds
+
+      const response = await fetch('/api/paperqa/index', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paperId: paper.id,
+          ollamaModel: 'llama3.1:8b'
+        }),
+      });
+
+      clearInterval(progressInterval);
+      const data = await response.json();
+
+      if (data.success) {
+        console.log(`✅ PaperQA indexation completed: ${data.chunks} chunks`);
+        setIndexingProgress(100);
+        setPaperQAIndexed(true);
+
+        // Wait a bit to show 100% before hiding
+        setTimeout(() => {
+          setIndexing(false);
+          setIndexingProgress(0);
+        }, 1000);
+
+        const welcomeMessage: Message = {
+          id: Date.now().toString(),
+          type: 'ai',
+          content: `✅ Indexation PaperQA terminée ! L'article "${paper.title}" a été analysé et indexé avec ${data.chunks} chunks. Je peux maintenant répondre à vos questions avec des citations précises.`,
+          timestamp: new Date(),
+        };
+        setMessages([welcomeMessage]);
+      } else {
+        clearInterval(progressInterval);
+        throw new Error(data.error);
+      }
+    } catch (err) {
+      console.error('❌ Error indexing with PaperQA:', err);
+      setIndexing(false);
+      setIndexingProgress(0);
+      setError(err instanceof Error ? err.message : 'Erreur lors de l\'indexation');
+    }
+  };
+
   const loadContext = async () => {
     try {
       setContextLoading(true);
       setError(null);
 
+      // If PaperQA is available and enabled, use it
+      if (usePaperQA && paperQAAvailable) {
+        if (!paperQAIndexed) {
+          await indexWithPaperQA();
+        } else {
+          const welcomeMessage: Message = {
+            id: Date.now().toString(),
+            type: 'ai',
+            content: `Bonjour ! L'article "${paper.title}" est déjà indexé avec PaperQA. Je peux répondre à vos questions avec des citations précises. Que souhaitez-vous savoir ?`,
+            timestamp: new Date(),
+          };
+          setMessages([welcomeMessage]);
+        }
+        setContextLoading(false);
+        return;
+      }
+
       console.log(`📄 Loading context for paper ${paper.id}`);
 
-      // Extract PDF text
+      // Extract PDF text (classic mode)
       const response = await fetch('/api/pdf/extract', {
         method: 'POST',
         headers: {
@@ -67,7 +181,6 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
         console.log(`✅ PDF loaded: ${data.data.pages} pages, ${data.data.text.length} characters`);
         setContextLoading(false);
 
-        // Welcome message
         const welcomeMessage: Message = {
           id: Date.now().toString(),
           type: 'ai',
@@ -181,37 +294,72 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
     setIsLoading(true);
 
     try {
-      console.log(`💬 Sending chat message for paper ${paper.id}: "${message}"`);
+      let response, data;
 
-      // First, get the PDF context
-      const pdfResponse = await fetch('/api/pdf/extract', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ paperId: paper.id }),
-      });
+      // Use PaperQA if enabled and available
+      if (usePaperQA && paperQAAvailable && paperQAIndexed) {
+        console.log(`🔍 PaperQA query for paper ${paper.id}: "${message}"`);
 
-      const pdfData = await pdfResponse.json();
-      const context = pdfData.success ? pdfData.data.text : null;
+        response = await fetch('/api/paperqa/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paperId: paper.id,
+            question: message,
+            llmModel: selectedModel
+          }),
+        });
 
-      // Send chat message with context
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: message,
-          context: context,
-          modelName: selectedModel,
-          history: messages,
-          provider: aiProvider
-        }),
-      });
+        data = await response.json();
+        console.log('PaperQA response:', data);
 
-      const data = await response.json();
-      console.log('Chat response:', data);
+        if (data.success) {
+          const aiMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            type: 'ai',
+            content: data.formatted_answer || data.response,
+            timestamp: new Date(),
+            citations: data.citations || []
+          };
+
+          setMessages(prev => {
+            const updatedMessages = [...prev, aiMessage];
+            saveChatHistory(updatedMessages);
+            return updatedMessages;
+          });
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        // Classic mode
+        console.log(`💬 Sending chat message for paper ${paper.id}: "${message}"`);
+
+        // Get PDF context
+        const pdfResponse = await fetch('/api/pdf/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paperId: paper.id }),
+        });
+
+        const pdfData = await pdfResponse.json();
+        const context = pdfData.success ? pdfData.data.text : null;
+
+        // Send chat message
+        response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: message,
+            context: context,
+            modelName: selectedModel,
+            history: messages,
+            provider: aiProvider
+          }),
+        });
+
+        data = await response.json();
+        console.log('Chat response:', data);
+      }
 
       if (!response.ok || !data.success) {
         let errorContent = 'Désolé, une erreur s\'est produite lors de la communication avec l\'IA.';
@@ -336,8 +484,8 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Model selector */}
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+      {/* Model selector and PaperQA toggle */}
+      <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 space-y-2">
         <div className="flex items-center space-x-3">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
             {aiProvider === 'groq' ? 'Groq' : 'Ollama'} :
@@ -371,6 +519,53 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
             )}
           </select>
         </div>
+
+        {/* PaperQA Toggle */}
+        <div className="flex items-center space-x-2 pt-1">
+          <input
+            type="checkbox"
+            id="paperqa-toggle"
+            checked={usePaperQA}
+            onChange={(e) => setUsePaperQA(e.target.checked)}
+            disabled={!paperQAAvailable || indexing}
+            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <label htmlFor="paperqa-toggle" className="text-sm flex items-center gap-2">
+            <span className="font-medium text-gray-700 dark:text-gray-300">
+              PaperQA (Citations précises)
+            </span>
+            {!paperQAAvailable && (
+              <span className="text-xs text-red-500">● Service indisponible</span>
+            )}
+            {paperQAAvailable && !paperQAIndexed && usePaperQA && (
+              <span className="text-xs text-orange-500">⚠️ Indexation requise</span>
+            )}
+            {paperQAAvailable && paperQAIndexed && (
+              <span className="text-xs text-green-500">✓ Indexé</span>
+            )}
+            {indexing && (
+              <span className="text-xs text-blue-500">⏳ Indexation en cours... {indexingProgress}%</span>
+            )}
+          </label>
+        </div>
+
+        {/* Progress Bar */}
+        {indexing && (
+          <div className="pt-2">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+              <div
+                className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
+                style={{ width: `${indexingProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
+              {indexingProgress < 30 ? 'Analyse du PDF...' :
+               indexingProgress < 60 ? 'Création des embeddings...' :
+               indexingProgress < 90 ? 'Indexation avec Ollama...' :
+               indexingProgress < 100 ? 'Finalisation...' : 'Terminé !'}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -403,6 +598,28 @@ const AIChat: React.FC<AIChatProps> = ({ paper }) => {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
               }`}>
                 <p className="whitespace-pre-wrap font-medium">{message.content}</p>
+
+                {/* Citations PaperQA */}
+                {message.citations && message.citations.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
+                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                      📚 Citations ({message.citations.length}) :
+                    </p>
+                    <div className="space-y-2">
+                      {message.citations.map((citation, idx) => (
+                        <div key={idx} className="text-xs bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-600">
+                          <p className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                            [{idx + 1}] Score: {citation.score.toFixed(2)}
+                          </p>
+                          <p className="italic text-gray-600 dark:text-gray-400">
+                            "{citation.text.substring(0, 150)}{citation.text.length > 150 ? '...' : ''}"
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {message.suggestion && (
                   <p className="text-sm mt-2 opacity-90 border-t border-red-300 dark:border-red-700 pt-2">
                     💡 {message.suggestion}

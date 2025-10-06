@@ -5,6 +5,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const pdf = require('pdf-parse');
 const Groq = require('groq-sdk');
+const paperQAService = require('../services/paperQAService');
 
 const router = express.Router();
 const execAsync = promisify(exec);
@@ -1098,6 +1099,146 @@ router.get('/chat/history/:paperId', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erreur lors du chargement de l\'historique'
+    });
+  }
+});
+
+// ============================================
+// PAPERQA ENDPOINTS (Ollama + Groq Mode)
+// ============================================
+
+// Helper function to find PDF path
+async function findPDFPath(paperId) {
+  const paperFolderPath = path.join(__dirname, '..', 'MyPapers');
+  const folders = await fs.readdir(paperFolderPath);
+
+  for (const folder of folders) {
+    if (folder.includes(`_${paperId}`)) {
+      const folderPath = path.join(paperFolderPath, folder);
+      const files = await fs.readdir(folderPath);
+      const pdfFile = files.find(file => file.toLowerCase().endsWith('.pdf'));
+      if (pdfFile) {
+        return path.join(folderPath, pdfFile);
+      }
+    }
+  }
+  return null;
+}
+
+// Check PaperQA service health
+router.get('/paperqa/health', async (req, res) => {
+  try {
+    const isHealthy = await paperQAService.healthCheck();
+    res.json({
+      success: true,
+      available: isHealthy,
+      service: 'PaperQA',
+      mode: 'Ollama (indexation) + Groq (requêtes)'
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      available: false,
+      error: error.message
+    });
+  }
+});
+
+// Check if a paper is indexed
+router.get('/paperqa/status/:paperId', async (req, res) => {
+  try {
+    const { paperId } = req.params;
+    const status = await paperQAService.checkStatus(parseInt(paperId));
+    res.json(status);
+  } catch (error) {
+    console.error('Error checking PaperQA status:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      indexed: false
+    });
+  }
+});
+
+// Index a paper with PaperQA (uses Ollama)
+router.post('/paperqa/index', async (req, res) => {
+  try {
+    const { paperId, ollamaModel } = req.body;
+
+    if (!paperId) {
+      return res.status(400).json({
+        success: false,
+        error: 'L\'ID du paper est requis'
+      });
+    }
+
+    console.log(`📚 Starting PaperQA indexation for paper ${paperId}`);
+
+    const pdfPath = await findPDFPath(paperId);
+
+    if (!pdfPath) {
+      return res.status(404).json({
+        success: false,
+        error: 'Fichier PDF non trouvé pour cet article'
+      });
+    }
+
+    const result = await paperQAService.indexPaper(
+      parseInt(paperId),
+      pdfPath,
+      ollamaModel || 'llama3.1:8b'
+    );
+
+    console.log(`✅ PaperQA indexation completed for paper ${paperId}`);
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error indexing with PaperQA:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Query using PaperQA (uses Groq)
+router.post('/paperqa/query', async (req, res) => {
+  try {
+    const { paperId, question, llmModel } = req.body;
+
+    if (!paperId || !question) {
+      return res.status(400).json({
+        success: false,
+        error: 'L\'ID du paper et la question sont requis'
+      });
+    }
+
+    console.log(`🔍 PaperQA query for paper ${paperId}: "${question}"`);
+
+    const pdfPath = await findPDFPath(paperId);
+
+    if (!pdfPath) {
+      return res.status(404).json({
+        success: false,
+        error: 'Fichier PDF non trouvé pour cet article'
+      });
+    }
+
+    const result = await paperQAService.query(
+      parseInt(paperId),
+      pdfPath,
+      question,
+      llmModel || 'llama-3.3-70b-versatile'
+    );
+
+    console.log(`✅ PaperQA query successful for paper ${paperId}`);
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error querying with PaperQA:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });

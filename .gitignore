@@ -142,3 +142,10 @@ extracted_images/
 *.db
 /backend/uploads
 
+# PaperQA Service
+paperqa-service/venv/
+paperqa-service/__pycache__/
+paperqa-service/*.pyc
+paperqa-service/.env
+paperqa-service/indexes/
+

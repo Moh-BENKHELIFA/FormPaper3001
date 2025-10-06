@@ -1,106 +1,53 @@
-# PaperQA Service for FormPaper
+# PaperQA Service for FormPaper3001
 
-Microservice Python utilisant PaperQA pour le RAG sur articles scientifiques.
+Service Python utilisant PaperQA2 pour l'analyse d'articles scientifiques avec citations.
+
+## Mode d'opération: Ollama (indexation) + Groq (requêtes)
+
+- **Indexation**: Utilise Ollama local (gratuit, illimité, mais plus lent)
+- **Requêtes**: Utilise Groq (gratuit, rapide)
 
 ## Installation
 
 ```bash
+# Créer un environnement virtuel Python
+python -m venv venv
+
+# Activer l'environnement
+# Windows:
+venv\Scripts\activate
+# Linux/Mac:
+source venv/bin/activate
+
+# Installer les dépendances
 pip install -r requirements.txt
+
+# Configurer les variables d'environnement
+cp .env.example .env
+# Éditer .env et ajouter votre clé Groq API
 ```
 
-## Démarrage
+## Lancement
 
 ```bash
-python app.py
+# Assurez-vous qu'Ollama est lancé
+ollama serve
+
+# Dans un autre terminal:
+python api.py
 ```
 
-Le service démarre sur http://localhost:5005
-
-## Architecture
-
-### Indexation
-- **Quand** : Au premier clic sur l'onglet "Chat IA"
-- **Stockage** : `{paper_id}_paperqa_index.json` dans le dossier du paper
-- **Chunks** : ~3000 caractères par chunk avec overlap de 200
-
-### Query
-- **RAG** : Trouve les 3-5 chunks les plus pertinents
-- **LLM** : Envoie seulement ces chunks à Groq/Ollama (2000-3000 tokens)
-- **Résultat** : Réponse + sources avec citations
+Le service sera disponible sur http://localhost:8000
 
 ## Endpoints
 
-### POST /config
-Configure les clés API
-```json
-{
-  "groq_api_key": "gsk_...",
-  "ollama_base_url": "http://localhost:11434"
-}
+- `GET /health` - Vérifier que le service est actif
+- `POST /api/paperqa/index` - Indexer un PDF
+- `POST /api/paperqa/query` - Poser une question
+- `GET /api/paperqa/status/{paper_id}` - Vérifier si un paper est indexé
+
+## Test rapide
+
+```bash
+curl http://localhost:8000/health
 ```
-
-### POST /index
-Indexe un document PDF
-```json
-{
-  "paper_id": 123,
-  "pdf_path": "C:/path/to/paper.pdf",
-  "provider": "groq",
-  "model_name": "llama-3.3-70b-versatile"
-}
-```
-
-**Response** :
-```json
-{
-  "success": true,
-  "paper_id": 123,
-  "already_indexed": false,
-  "chunks": 42,
-  "time_seconds": 12.3,
-  "message": "Document indexed successfully"
-}
-```
-
-### POST /query
-Interroge un document via RAG
-```json
-{
-  "paper_id": 123,
-  "question": "Quelle est la méthodologie ?",
-  "history": [
-    {"type": "user", "content": "..."},
-    {"type": "ai", "content": "..."}
-  ],
-  "provider": "groq",
-  "model_name": "llama-3.3-70b-versatile"
-}
-```
-
-**Response** :
-```json
-{
-  "success": true,
-  "paper_id": 123,
-  "response": "La méthodologie utilisée est...",
-  "context": "Source chunks with page numbers",
-  "question": "Quelle est la méthodologie ?"
-}
-```
-
-### GET /status/{paper_id}
-Vérifie si un document a été indexé
-
-### DELETE /delete/{paper_id}
-Supprime l'index d'un document
-
-### GET /health
-Vérification de santé du service
-
-## Avantages PaperQA
-
-- ✅ **Réduit les tokens** : 14,000 → 2,500 tokens
-- ✅ **Citations précises** : Numéro de page + extrait
-- ✅ **Comprend la structure** : Sections scientifiques
-- ✅ **Multi-document** : Peut comparer plusieurs papers
-- ✅ **Compatible Groq/Ollama** : Utilise les deux providers
