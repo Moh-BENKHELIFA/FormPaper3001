@@ -5,6 +5,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const pdf = require('pdf-parse');
 const Groq = require('groq-sdk');
+const paperQAService = require('../services/paperQAService');
 
 const router = express.Router();
 const execAsync = promisify(exec);
@@ -437,39 +438,10 @@ router.post('/pdf/extract', async (req, res) => {
     const dataBuffer = await fs.readFile(pdfPath);
     const data = await pdf(dataBuffer);
 
-    // Optimiser le texte pour réduire la taille (tokens)
-    let optimizedText = data.text;
-
-    // 1. Supprimer les espaces multiples et sauts de ligne excessifs
-    optimizedText = optimizedText.replace(/\s+/g, ' ');
-
-    // 2. Supprimer les caractères spéciaux redondants
-    optimizedText = optimizedText.replace(/[•●○▪▫■□◆◇★☆]+/g, '- ');
-
-    // 3. Compresser les séquences de tirets/underscores
-    optimizedText = optimizedText.replace(/[-_]{3,}/g, '');
-
-    // 4. Nettoyer les numéros de pages et headers/footers répétitifs
-    optimizedText = optimizedText.replace(/\b(page\s*\d+|©\s*\d{4})\b/gi, '');
-
-    // 5. Réduire les références bibliographiques en gardant seulement l'essentiel
-    optimizedText = optimizedText.replace(/\[\d+\]\s*/g, ''); // Enlever [1], [2], etc.
-
-    // 6. Trim et nettoyer
-    optimizedText = optimizedText.trim();
-
-    console.log(`📊 Optimisation PDF: ${data.text.length} → ${optimizedText.length} caractères (${Math.round((1 - optimizedText.length / data.text.length) * 100)}% réduction)`);
-
-    // RAG-Anything disabled for now (installation incomplete)
-    // TODO: Complete RAG-Anything installation and re-enable
-
     res.json({
       success: true,
       data: {
-        text: optimizedText, // Utiliser le texte optimisé
-        originalLength: data.text.length,
-        optimizedLength: optimizedText.length,
-        reductionPercent: Math.round((1 - optimizedText.length / data.text.length) * 100),
+        text: data.text,
         pages: data.numpages,
         info: data.info,
         metadata: {
@@ -807,7 +779,7 @@ router.post('/settings', async (req, res) => {
 // Chat avec l'IA sur un document
 router.post('/chat', async (req, res) => {
   try {
-    const { message, context, modelName = 'llama3.1:8b', history = [], provider = 'ollama', paperId, useRAG = false } = req.body;
+    const { message, context, modelName = 'llama3.1:8b', history = [], provider = 'ollama' } = req.body;
 
     if (!message) {
       return res.status(400).json({
@@ -816,41 +788,7 @@ router.post('/chat', async (req, res) => {
       });
     }
 
-    // If RAG is enabled and paperId is provided, use RAG-Anything microservice
-    if (useRAG && paperId) {
-      try {
-        const ragResponse = await fetch('http://localhost:5005/query', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            paper_id: paperId,
-            question: message,
-            history: history,
-            llm_model: provider === 'groq' ? modelName : 'ollama/' + modelName
-          })
-        });
-
-        if (ragResponse.ok) {
-          const ragData = await ragResponse.json();
-          return res.json({
-            success: true,
-            data: {
-              response: ragData.response,
-              model: modelName,
-              timestamp: new Date().toISOString(),
-              provider: 'rag-' + provider,
-              rag_enabled: true
-            }
-          });
-        } else {
-          console.log('RAG service unavailable, falling back to standard method');
-        }
-      } catch (ragError) {
-        console.log('RAG service error, falling back to standard method:', ragError.message);
-      }
-    }
+    // RAG functionality removed - was causing issues and not needed
 
     // Construire le prompt avec le contexte du document et l'historique
     let fullPrompt = '';
@@ -921,13 +859,15 @@ RÉPONSE :`;
       if (context) {
         const contextText = typeof context === 'string' ? context : (context.text || '');
         if (contextText) {
-          // Pour Groq, limiter le contexte à 15000 caractères (~3000 tokens) pour éviter l'erreur 413
-          const maxContextLength = 15000;
+          // Ajuster la limite selon le modèle utilisé
+          // Modèles avec haute limite (20,000 TPM) : llama-3.3-70b-versatile, llama-3.1-70b-versatile
+          // Modèles avec basse limite (8,000 TPM) : openai/gpt-oss-120b, etc.
+          const maxContextLength = 60000; // ~12,000 tokens - adapté pour les modèles haute capacité
           const truncatedContext = contextText.substring(0, maxContextLength);
 
           messages.push({
             role: 'system',
-            content: `Tu es un assistant IA spécialisé dans l'analyse d'articles de recherche scientifique. Voici le contenu de l'article à analyser (extrait) :\n\n${truncatedContext}${contextText.length > maxContextLength ? '\n\n[...Document tronqué pour respecter les limites...]' : ''}`
+            content: `Tu es un assistant IA spécialisé dans l'analyse d'articles de recherche scientifique. Voici le contenu de l'article à analyser${contextText.length > maxContextLength ? ' (extrait)' : ''} :\n\n${truncatedContext}${contextText.length > maxContextLength ? '\n\n[...Document tronqué - utilisez un modèle avec limite plus élevée comme llama-3.3-70b-versatile pour voir le document complet...]' : ''}`
           });
         }
       }
@@ -1159,6 +1099,146 @@ router.get('/chat/history/:paperId', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erreur lors du chargement de l\'historique'
+    });
+  }
+});
+
+// ============================================
+// PAPERQA ENDPOINTS (Ollama + Groq Mode)
+// ============================================
+
+// Helper function to find PDF path
+async function findPDFPath(paperId) {
+  const paperFolderPath = path.join(__dirname, '..', 'MyPapers');
+  const folders = await fs.readdir(paperFolderPath);
+
+  for (const folder of folders) {
+    if (folder.includes(`_${paperId}`)) {
+      const folderPath = path.join(paperFolderPath, folder);
+      const files = await fs.readdir(folderPath);
+      const pdfFile = files.find(file => file.toLowerCase().endsWith('.pdf'));
+      if (pdfFile) {
+        return path.join(folderPath, pdfFile);
+      }
+    }
+  }
+  return null;
+}
+
+// Check PaperQA service health
+router.get('/paperqa/health', async (req, res) => {
+  try {
+    const isHealthy = await paperQAService.healthCheck();
+    res.json({
+      success: true,
+      available: isHealthy,
+      service: 'PaperQA',
+      mode: 'Ollama (indexation) + Groq (requêtes)'
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      available: false,
+      error: error.message
+    });
+  }
+});
+
+// Check if a paper is indexed
+router.get('/paperqa/status/:paperId', async (req, res) => {
+  try {
+    const { paperId } = req.params;
+    const status = await paperQAService.checkStatus(parseInt(paperId));
+    res.json(status);
+  } catch (error) {
+    console.error('Error checking PaperQA status:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      indexed: false
+    });
+  }
+});
+
+// Index a paper with PaperQA (uses Ollama)
+router.post('/paperqa/index', async (req, res) => {
+  try {
+    const { paperId, ollamaModel } = req.body;
+
+    if (!paperId) {
+      return res.status(400).json({
+        success: false,
+        error: 'L\'ID du paper est requis'
+      });
+    }
+
+    console.log(`📚 Starting PaperQA indexation for paper ${paperId}`);
+
+    const pdfPath = await findPDFPath(paperId);
+
+    if (!pdfPath) {
+      return res.status(404).json({
+        success: false,
+        error: 'Fichier PDF non trouvé pour cet article'
+      });
+    }
+
+    const result = await paperQAService.indexPaper(
+      parseInt(paperId),
+      pdfPath,
+      ollamaModel || 'llama3.1:8b'
+    );
+
+    console.log(`✅ PaperQA indexation completed for paper ${paperId}`);
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error indexing with PaperQA:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Query using PaperQA (uses Groq)
+router.post('/paperqa/query', async (req, res) => {
+  try {
+    const { paperId, question, llmModel } = req.body;
+
+    if (!paperId || !question) {
+      return res.status(400).json({
+        success: false,
+        error: 'L\'ID du paper et la question sont requis'
+      });
+    }
+
+    console.log(`🔍 PaperQA query for paper ${paperId}: "${question}"`);
+
+    const pdfPath = await findPDFPath(paperId);
+
+    if (!pdfPath) {
+      return res.status(404).json({
+        success: false,
+        error: 'Fichier PDF non trouvé pour cet article'
+      });
+    }
+
+    const result = await paperQAService.query(
+      parseInt(paperId),
+      pdfPath,
+      question,
+      llmModel || 'llama-3.3-70b-versatile'
+    );
+
+    console.log(`✅ PaperQA query successful for paper ${paperId}`);
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error querying with PaperQA:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
