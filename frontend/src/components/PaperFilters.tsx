@@ -32,11 +32,20 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
     }
   };
 
-  const handleFilterChange = (key: keyof PaperFiltersType, value: string | boolean | number[]) => {
+  const handleFilterChange = (key: keyof PaperFiltersType, value: string | boolean | number[] | string[]) => {
     onFiltersChange({
       ...filters,
       [key]: value,
     });
+  };
+
+  const handleStatusToggle = (status: string) => {
+    const currentStatuses = filters.statuses || ['unread', 'reading', 'read'];
+    const newStatuses = currentStatuses.includes(status)
+      ? currentStatuses.filter(s => s !== status)
+      : [...currentStatuses, status];
+
+    handleFilterChange('statuses', newStatuses.length === 0 ? ['unread', 'reading', 'read'] : newStatuses);
   };
 
   const handleTagToggle = (tagId: number) => {
@@ -49,10 +58,9 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
   };
 
   const statusOptions = [
-    { value: '', label: 'Tous les statuts' },
-    { value: 'unread', label: 'Non lus' },
-    { value: 'reading', label: 'En cours' },
-    { value: 'read', label: 'Lus' },
+    { value: 'unread', label: 'Non lus', color: '#6B7280' }, // gray-500
+    { value: 'reading', label: 'En cours', color: '#F59E0B' }, // yellow-500
+    { value: 'read', label: 'Lus', color: '#10B981' }, // green-500
   ];
 
   const sortOptions = [
@@ -66,8 +74,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
   ).sort();
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+    <div className="space-y-6">
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
           Favoris
@@ -101,24 +108,32 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
           Statut de lecture
         </label>
-        <select
-          value={filters.status}
-          onChange={(e) => handleFilterChange('status', e.target.value)}
-          className="input-field w-full"
-        >
-          {statusOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+          {statusOptions.map((option) => {
+            const isSelected = (filters.statuses || ['unread', 'reading', 'read']).includes(option.value);
+            return (
+              <button
+                key={option.value}
+                onClick={() => handleStatusToggle(option.value)}
+                className="flex-1 px-3 py-1.5 text-xs font-medium rounded transition-all duration-200"
+                style={{
+                  backgroundColor: isSelected ? option.color : 'transparent',
+                  color: isSelected ? '#FFFFFF' : option.color,
+                  boxShadow: isSelected ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none'
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
           Conférence/Journal
         </label>
         <select
@@ -136,7 +151,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
           Trier par
         </label>
         <select
@@ -153,7 +168,7 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
           Ordre
         </label>
         <select
@@ -164,7 +179,6 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
           <option value="desc">Décroissant</option>
           <option value="asc">Croissant</option>
         </select>
-      </div>
       </div>
 
       {/* Section Tags séparée */}
@@ -177,15 +191,15 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
         ) : availableTags.length === 0 ? (
           <div className="text-sm text-gray-500 dark:text-gray-400">Aucun tag disponible</div>
         ) : (
-          <div className="flex flex-wrap gap-3 max-h-32 overflow-y-auto p-1">
+          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
             {availableTags.map((tag) => (
               <button
                 key={tag.id}
                 onClick={() => handleTagToggle(tag.id)}
-                className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200 border ${
+                className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 border ${
                   filters.tags?.includes(tag.id)
-                    ? 'text-white shadow-sm scale-105'
-                    : 'text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 hover:scale-105'
+                    ? 'text-white shadow-sm'
+                    : 'text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                 }`}
                 style={{
                   backgroundColor: filters.tags?.includes(tag.id) && tag.color ? tag.color : undefined,
@@ -198,15 +212,13 @@ const PaperFilters: React.FC<PaperFiltersProps> = ({
               >
                 {tag.color && (
                   <div
-                    className={`w-2 h-2 rounded-full mr-2 ${
-                      filters.tags?.includes(tag.id) ? 'bg-white bg-opacity-80' : ''
-                    }`}
+                    className="w-2 h-2 rounded-full mr-2 flex-shrink-0"
                     style={{
                       backgroundColor: filters.tags?.includes(tag.id) ? 'rgba(255,255,255,0.8)' : tag.color
                     }}
                   ></div>
                 )}
-                {tag.name}
+                <span className="truncate">{tag.name}</span>
               </button>
             ))}
           </div>

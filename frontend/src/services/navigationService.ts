@@ -5,6 +5,7 @@ class NavigationService {
   private state: NavigationState = {
     currentPage: 'home',
     selectedPaperId: null,
+    selectedCollectionId: null,
     viewMode: 'grid',
     isLoading: false,
   };
@@ -37,6 +38,12 @@ class NavigationService {
 
   setSelectedPaperId(id: number | null): void {
     this.state = { ...this.state, selectedPaperId: id };
+    this.notify();
+    this.updateURL();
+  }
+
+  setSelectedCollectionId(id: number | null): void {
+    this.state = { ...this.state, selectedCollectionId: id };
     this.notify();
     this.updateURL();
   }
@@ -102,8 +109,30 @@ class NavigationService {
     this.updateURL();
   }
 
+  goToCreateCollection(collectionId?: number | null): void {
+    this.state = {
+      ...this.state,
+      currentPage: 'create-collection',
+      selectedPaperId: null,
+      selectedCollectionId: collectionId ?? null,
+    };
+    this.notify();
+    this.updateURL();
+  }
+
+  goToCollection(collectionId: number): void {
+    this.state = {
+      ...this.state,
+      currentPage: 'collection',
+      selectedPaperId: null,
+      selectedCollectionId: collectionId,
+    };
+    this.notify();
+    this.updateURL();
+  }
+
   private updateURL(): void {
-    const { currentPage, selectedPaperId } = this.state;
+    const { currentPage, selectedPaperId, selectedCollectionId } = this.state;
     let path = '/';
 
     switch (currentPage) {
@@ -122,6 +151,18 @@ class NavigationService {
         break;
       case 'settings':
         path = '/settings';
+        break;
+      case 'create-collection':
+        if (selectedCollectionId) {
+          path = `/collections/edit/${selectedCollectionId}`;
+        } else {
+          path = '/collections/new';
+        }
+        break;
+      case 'collection':
+        if (selectedCollectionId) {
+          path = `/collections/${selectedCollectionId}`;
+        }
         break;
       case 'home':
       default:
@@ -167,11 +208,39 @@ class NavigationService {
         currentPage: 'settings',
         selectedPaperId: null,
       };
+    } else if (path === '/collections/new') {
+      this.state = {
+        ...this.state,
+        currentPage: 'create-collection',
+        selectedPaperId: null,
+        selectedCollectionId: null,
+      };
+    } else if (path.startsWith('/collections/edit/')) {
+      const collectionId = parseInt(path.split('/')[3]);
+      if (!isNaN(collectionId)) {
+        this.state = {
+          ...this.state,
+          currentPage: 'create-collection',
+          selectedPaperId: null,
+          selectedCollectionId: collectionId,
+        };
+      }
+    } else if (path.startsWith('/collections/')) {
+      const collectionId = parseInt(path.split('/')[2]);
+      if (!isNaN(collectionId)) {
+        this.state = {
+          ...this.state,
+          currentPage: 'collection',
+          selectedPaperId: null,
+          selectedCollectionId: collectionId,
+        };
+      }
     } else {
       this.state = {
         ...this.state,
         currentPage: 'home',
         selectedPaperId: null,
+        selectedCollectionId: null,
       };
     }
 

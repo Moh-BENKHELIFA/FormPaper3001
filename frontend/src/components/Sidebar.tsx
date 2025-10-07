@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BookOpen,
   Eye,
@@ -15,22 +15,40 @@ import {
 } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { PaperStats } from '../types/Paper';
+import { collectionService, Collection } from '../services/collectionService';
 
 interface SidebarProps {
   stats: PaperStats;
   onStatsRefresh?: () => void;
   onStatFilterClick?: (filterType: string) => void;
   activeStatFilter?: string | null;
+  onCollectionClick?: (collectionId: number) => void;
+  selectedCollectionId?: number | null;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ stats, onStatFilterClick, activeStatFilter }) => {
-  const { goToHome, goToAddPaper, goToSettings, currentPage } = useNavigation();
-  const [categories, setCategories] = useState([
-    { id: 1, name: 'Machine Learning', count: 12 },
-    { id: 2, name: 'Computer Vision', count: 8 },
-    { id: 3, name: 'NLP', count: 5 },
-  ]);
+const Sidebar: React.FC<SidebarProps> = ({
+  stats,
+  onStatFilterClick,
+  activeStatFilter,
+  onCollectionClick,
+  selectedCollectionId
+}) => {
+  const { goToHome, goToAddPaper, goToSettings, goToCreateCollection, currentPage } = useNavigation();
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(true);
+
+  useEffect(() => {
+    loadCollections();
+  }, []);
+
+  const loadCollections = async () => {
+    try {
+      const data = await collectionService.getAllCollections();
+      setCollections(data);
+    } catch (err) {
+      console.error('Error loading collections:', err);
+    }
+  };
 
   const menuItems = [
     {
@@ -187,26 +205,34 @@ const Sidebar: React.FC<SidebarProps> = ({ stats, onStatFilterClick, activeStatF
 
         {isCategoriesExpanded && (
           <div className="flex-1 overflow-y-auto">
-            {/* Add New Category Button */}
+            {/* Add New Collection Button */}
             <button
+              onClick={() => goToCreateCollection()}
               className="w-full flex items-center space-x-2 p-2 mb-2 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span className="text-sm font-medium">Nouvelle collection</span>
             </button>
 
-            {/* Categories List */}
+            {/* Collections List */}
             <div className="space-y-1">
-              {categories.map((category) => (
+              {collections.map((collection) => (
                 <button
-                  key={category.id}
-                  className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-left transition-colors"
+                  key={collection.id}
+                  onClick={() => onCollectionClick?.(collection.id)}
+                  className={`
+                    w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors
+                    ${selectedCollectionId === collection.id
+                      ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }
+                  `}
                 >
                   <div className="flex items-center space-x-2">
                     <FolderOpen className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{category.name}</span>
+                    <span className="text-sm">{collection.name}</span>
                   </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-500">{category.count}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-500">{collection.count}</span>
                 </button>
               ))}
             </div>

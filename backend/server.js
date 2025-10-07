@@ -8,6 +8,7 @@ const { spawn } = require('child_process');
 const database = require('./src/database');
 // const notesRoutes = require('./src/routes/notesRoutes');
 const tagsRoutes = require('./src/routes/tagsRoutes');
+const collectionsRoutes = require('./routes/collections');
 const imageUploadRoutes = require('./routes/imageUpload');
 const notesStorageRoutes = require('./routes/notesStorage');
 const aiRoutes = require('./routes/aiRoutes');
@@ -423,6 +424,7 @@ app.post('/api/categories', async (req, res) => {
 
 // app.use('/api/notes', notesRoutes);
 app.use('/api/tags', tagsRoutes);
+app.use('/api', collectionsRoutes);
 app.use('/api', imageUploadRoutes);
 app.use('/api', notesStorageRoutes);
 app.use('/api', aiRoutes);

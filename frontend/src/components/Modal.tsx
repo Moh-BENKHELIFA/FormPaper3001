@@ -58,17 +58,17 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 animate-fade-in overflow-y-auto"
       onClick={handleBackdropClick}
     >
       <div
         className={clsx(
-          'bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full animate-slide-up',
+          'bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full animate-slide-up my-8 max-h-[calc(100vh-4rem)] flex flex-col',
           sizeClasses[size],
           className
         )}
       >
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
           {showCloseButton && (
             <button
@@ -79,7 +79,7 @@ export const Modal: React.FC<ModalProps> = ({
             </button>
           )}
         </div>
-        <div className="p-6">{children}</div>
+        <div className="p-6 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );

@@ -100,6 +100,7 @@ export interface PaperStats {
 export interface PaperFilters {
   search: string;
   status: string;
+  statuses?: string[];
   category: string;
   tags: number[];
   showFavorites: boolean;

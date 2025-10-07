@@ -16,6 +16,7 @@ export const useNavigation = (): NavigationState & NavigationActions => {
   const actions: NavigationActions = {
     setCurrentPage: navigationService.setCurrentPage.bind(navigationService),
     setSelectedPaperId: navigationService.setSelectedPaperId.bind(navigationService),
+    setSelectedCollectionId: navigationService.setSelectedCollectionId.bind(navigationService),
     setViewMode: navigationService.setViewMode.bind(navigationService),
     setIsLoading: navigationService.setIsLoading.bind(navigationService),
     goToNotes: navigationService.goToNotes.bind(navigationService),
@@ -23,6 +24,8 @@ export const useNavigation = (): NavigationState & NavigationActions => {
     goToAddPaper: navigationService.goToAddPaper.bind(navigationService),
     goToManagePaper: navigationService.goToManagePaper.bind(navigationService),
     goToSettings: navigationService.goToSettings.bind(navigationService),
+    goToCreateCollection: navigationService.goToCreateCollection.bind(navigationService),
+    goToCollection: navigationService.goToCollection.bind(navigationService),
   };
 
   return {

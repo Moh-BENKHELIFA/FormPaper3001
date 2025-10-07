@@ -4,15 +4,17 @@ import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { PaperStats, Tag } from '../types/Paper';
 import { paperService } from '../services/paperService';
+import { collectionService, Collection } from '../services/collectionService';
 import Sidebar from './Sidebar';
 import Modal from './Modal';
 
 const Settings: React.FC = () => {
-  const { goToHome } = useNavigation();
+  const { goToHome, goToCreateCollection } = useNavigation();
   const { success, error } = useToast();
   const { theme, setTheme } = useTheme();
-  const [activeSection, setActiveSection] = useState<'general' | 'tags' | 'integrations' | 'ai'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'tags' | 'collections' | 'integrations' | 'ai'>('general');
   const [tags, setTags] = useState<Tag[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Modal states
@@ -20,12 +22,15 @@ const Settings: React.FC = () => {
   const [showEditTagModal, setShowEditTagModal] = useState(false);
   const [showDeleteTagModal, setShowDeleteTagModal] = useState(false);
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
+  const [showDeleteCollectionModal, setShowDeleteCollectionModal] = useState(false);
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [showResetDatabaseModal, setShowResetDatabaseModal] = useState(false);
   const [resetConfirmationText, setResetConfirmationText] = useState('');
 
   // Form states
   const [tagName, setTagName] = useState('');
   const [tagColor, setTagColor] = useState('#3B82F6');
+  const [collectionName, setCollectionName] = useState('');
 
   // AI/Ollama states
   const [aiProvider, setAiProvider] = useState<'ollama' | 'groq'>('ollama');
@@ -59,6 +64,8 @@ const Settings: React.FC = () => {
   useEffect(() => {
     if (activeSection === 'tags') {
       loadTags();
+    } else if (activeSection === 'collections') {
+      loadCollections();
     } else if (activeSection === 'ai') {
       loadOllamaData();
     }
@@ -72,6 +79,19 @@ const Settings: React.FC = () => {
     } catch (err) {
       error('Erreur', 'Impossible de charger les tags');
       console.error('Error loading tags:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadCollections = async () => {
+    try {
+      setIsLoading(true);
+      const collectionsData = await collectionService.getAllCollections();
+      setCollections(collectionsData);
+    } catch (err) {
+      error('Erreur', 'Impossible de charger les collections');
+      console.error('Error loading collections:', err);
     } finally {
       setIsLoading(false);
     }
@@ -421,6 +441,30 @@ const Settings: React.FC = () => {
     setShowDeleteTagModal(true);
   };
 
+  const handleDeleteCollection = async () => {
+    if (!selectedCollection) return;
+
+    try {
+      await collectionService.deleteCollection(selectedCollection.id);
+      success('Succès', 'Collection supprimée avec succès');
+      setShowDeleteCollectionModal(false);
+      setSelectedCollection(null);
+      loadCollections();
+    } catch (err) {
+      error('Erreur', 'Impossible de supprimer la collection');
+      console.error('Error deleting collection:', err);
+    }
+  };
+
+  const openEditCollectionModal = (collection: Collection) => {
+    goToCreateCollection(collection.id);
+  };
+
+  const openDeleteCollectionModal = (collection: Collection) => {
+    setSelectedCollection(collection);
+    setShowDeleteCollectionModal(true);
+  };
+
   const handleResetDatabase = async () => {
     if (resetConfirmationText !== 'RESET') {
       error('Erreur', 'Veuillez taper "RESET" pour confirmer');
@@ -457,6 +501,7 @@ const Settings: React.FC = () => {
   const menuItems = [
     { id: 'general', label: 'Général', icon: '⚙️' },
     { id: 'tags', label: 'Gestion des Tags', icon: '🏷️' },
+    { id: 'collections', label: 'Gestion des Collections', icon: '📁' },
     { id: 'ai', label: 'Intelligence Artificielle', icon: '🤖' },
     { id: 'integrations', label: 'Intégrations', icon: '🔗' },
   ];
@@ -604,6 +649,62 @@ const Settings: React.FC = () => {
                       <button
                         onClick={() => openDeleteTagModal(tag)}
                         className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition-colors"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderCollectionsSettings = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Gestion des Collections</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between items-center">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Collections existantes ({collections.length})</h4>
+            </div>
+          </div>
+
+          <div className="p-4">
+            {isLoading ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-500">
+                <p>Chargement des collections...</p>
+              </div>
+            ) : collections.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-500">
+                <p>Aucune collection créée</p>
+                <p className="text-sm mt-2">Créez votre première collection pour organiser vos articles</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {collections.map((collection) => (
+                  <div key={collection.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-xl">📁</span>
+                      <div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{collection.name}</span>
+                        <p className="text-xs text-gray-500 dark:text-gray-500">{collection.count || 0} article{(collection.count || 0) !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => openEditCollectionModal(collection)}
+                        className="px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 rounded transition-colors"
+                      >
+                        Modifier
+                      </button>
+                      <button
+                        onClick={() => openDeleteCollectionModal(collection)}
+                        className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded transition-colors"
                       >
                         Supprimer
                       </button>
@@ -1127,6 +1228,7 @@ const Settings: React.FC = () => {
 
               {activeSection === 'general' && renderGeneralSettings()}
               {activeSection === 'tags' && renderTagsSettings()}
+              {activeSection === 'collections' && renderCollectionsSettings()}
               {activeSection === 'ai' && renderAISettings()}
               {activeSection === 'integrations' && renderIntegrationsSettings()}
             </div>
@@ -1280,6 +1382,49 @@ const Settings: React.FC = () => {
             </button>
             <button
               onClick={handleDeleteTag}
+              className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Supprimer
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Collection Modal */}
+      <Modal
+        isOpen={showDeleteCollectionModal}
+        onClose={() => setShowDeleteCollectionModal(false)}
+        title="Supprimer la collection"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-700 dark:text-gray-300">
+            Êtes-vous sûr de vouloir supprimer la collection{' '}
+            <span className="font-medium">"{selectedCollection?.name}"</span> ?
+          </p>
+
+          {selectedCollection && (
+            <div className="flex items-center space-x-2 p-3 bg-red-50 dark:bg-gray-800 rounded-lg">
+              <span className="text-xl">📁</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedCollection.name}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-500">
+                ({selectedCollection.count || 0} article{(selectedCollection.count || 0) !== 1 ? 's' : ''})
+              </span>
+            </div>
+          )}
+
+          <p className="text-sm text-red-600 dark:text-red-400">
+            ⚠️ Cette action est irréversible. Les articles ne seront pas supprimés, seulement retirés de cette collection.
+          </p>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              onClick={() => setShowDeleteCollectionModal(false)}
+              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleDeleteCollection}
               className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
             >
               Supprimer

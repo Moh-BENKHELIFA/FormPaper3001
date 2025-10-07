@@ -7,6 +7,8 @@ import PaperNotes from './components/PaperNotes';
 import AddPaper from './components/AddPaper';
 import ManagePaper from './components/ManagePaper';
 import Settings from './components/Settings';
+import CreateCollectionPage from './components/CreateCollectionPage';
+import CollectionPage from './components/CollectionPage';
 
 const App: React.FC = () => {
   const { currentPage, selectedPaperId } = useNavigation();
@@ -21,6 +23,10 @@ const App: React.FC = () => {
         return selectedPaperId ? <ManagePaper paperId={selectedPaperId} /> : <HomePage />;
       case 'settings':
         return <Settings />;
+      case 'create-collection':
+        return <CreateCollectionPage />;
+      case 'collection':
+        return <CollectionPage />;
       case 'home':
       default:
         return <HomePage />;

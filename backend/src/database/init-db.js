@@ -18,22 +18,22 @@ CREATE TABLE IF NOT EXISTS papers (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table des catégories
-CREATE TABLE IF NOT EXISTS categories (
+-- Table des collections
+CREATE TABLE IF NOT EXISTS collections (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL UNIQUE,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table de liaison Many-to-Many entre papers et categories
-CREATE TABLE IF NOT EXISTS paper_categories (
+-- Table de liaison Many-to-Many entre papers et collections
+CREATE TABLE IF NOT EXISTS paper_collections (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   paper_id INTEGER NOT NULL,
-  category_id INTEGER NOT NULL,
+  collection_id INTEGER NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (paper_id) REFERENCES papers (id) ON DELETE CASCADE,
-  FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE CASCADE,
-  UNIQUE(paper_id, category_id)
+  FOREIGN KEY (collection_id) REFERENCES collections (id) ON DELETE CASCADE,
+  UNIQUE(paper_id, collection_id)
 );
 
 -- Table des tags
@@ -70,8 +70,8 @@ CREATE TABLE IF NOT EXISTS descriptions (
 CREATE INDEX IF NOT EXISTS idx_papers_status ON papers(reading_status);
 CREATE INDEX IF NOT EXISTS idx_papers_created_at ON papers(created_at);
 CREATE INDEX IF NOT EXISTS idx_papers_doi ON papers(doi);
-CREATE INDEX IF NOT EXISTS idx_paper_categories_paper_id ON paper_categories(paper_id);
-CREATE INDEX IF NOT EXISTS idx_paper_categories_category_id ON paper_categories(category_id);
+CREATE INDEX IF NOT EXISTS idx_paper_collections_paper_id ON paper_collections(paper_id);
+CREATE INDEX IF NOT EXISTS idx_paper_collections_collection_id ON paper_collections(collection_id);
 CREATE INDEX IF NOT EXISTS idx_paper_tags_paper_id ON paper_tags(paper_id);
 CREATE INDEX IF NOT EXISTS idx_paper_tags_tag_id ON paper_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_descriptions_paper_id ON descriptions(paper_id);
@@ -91,18 +91,6 @@ END;
 `;
 
 const insertSampleData = `
--- Insertion de catégories par défaut
-INSERT OR IGNORE INTO categories (name) VALUES
-  ('Machine Learning'),
-  ('Computer Vision'),
-  ('Natural Language Processing'),
-  ('Robotics'),
-  ('Database Systems'),
-  ('Software Engineering'),
-  ('Security'),
-  ('Networks'),
-  ('Algorithms'),
-  ('Theory');
 
 -- Insertion de tags par défaut
 INSERT OR IGNORE INTO tags (name, color) VALUES

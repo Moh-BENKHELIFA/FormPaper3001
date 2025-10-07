@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
+import { collectionService } from '../services/collectionService';
 import { Paper, PaperStats } from '../types/Paper';
 import TopMenu from './TopMenu';
 import Sidebar from './Sidebar';
@@ -20,21 +21,53 @@ const HomePage: React.FC = () => {
   });
   const [filteredPapers, setFilteredPapers] = useState<Paper[]>([]);
   const [activeStatFilter, setActiveStatFilter] = useState<string | null>(null);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<number | null>(null);
 
   useEffect(() => {
     loadPapers();
     loadStats();
   }, []);
 
+  useEffect(() => {
+    // Charger les papers de la collection sélectionnée
+    if (selectedCollectionId !== null) {
+      loadCollectionPapers(selectedCollectionId);
+    } else {
+      // Si aucune collection sélectionnée, afficher tous les papers
+      setFilteredPapers(papers);
+      loadStats();
+    }
+  }, [selectedCollectionId]);
+
+  useEffect(() => {
+    // Recalculer les stats quand les papiers filtrés changent
+    calculateStats(filteredPapers);
+  }, [filteredPapers]);
+
   const loadPapers = async () => {
     try {
       setIsLoading(true);
       const papersData = await paperService.getAllPapers();
       setPapers(papersData);
-      setFilteredPapers(papersData);
+      if (selectedCollectionId === null) {
+        setFilteredPapers(papersData);
+      }
     } catch (err) {
       error('Erreur', 'Impossible de charger les articles');
       console.error('Error loading papers:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadCollectionPapers = async (collectionId: number) => {
+    try {
+      setIsLoading(true);
+      const collection = await collectionService.getCollection(collectionId);
+      setFilteredPapers(collection.papers || []);
+    } catch (err) {
+      error('Erreur', 'Impossible de charger les articles de la collection');
+      console.error('Error loading collection papers:', err);
     } finally {
       setIsLoading(false);
     }
@@ -47,6 +80,17 @@ const HomePage: React.FC = () => {
     } catch (err) {
       console.error('Error loading stats:', err);
     }
+  };
+
+  const calculateStats = (papersToCalculate: Paper[]) => {
+    const newStats: PaperStats = {
+      total: papersToCalculate.length,
+      unread: papersToCalculate.filter(p => p.reading_status === 'unread').length,
+      reading: papersToCalculate.filter(p => p.reading_status === 'reading').length,
+      read: papersToCalculate.filter(p => p.reading_status === 'read').length,
+      favorite: papersToCalculate.filter(p => p.is_favorite === 1).length,
+    };
+    setStats(newStats);
   };
 
   const handlePapersChange = () => {
@@ -104,6 +148,17 @@ const HomePage: React.FC = () => {
     setFilteredPapers(filtered);
   };
 
+  const handleCollectionClick = (collectionId: number) => {
+    // Toggle collection selection
+    if (selectedCollectionId === collectionId) {
+      setSelectedCollectionId(null);
+      setActiveStatFilter(null);
+    } else {
+      setSelectedCollectionId(collectionId);
+      setActiveStatFilter(null);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar
@@ -111,6 +166,8 @@ const HomePage: React.FC = () => {
         onStatsRefresh={loadStats}
         onStatFilterClick={handleStatFilterClick}
         activeStatFilter={activeStatFilter}
+        onCollectionClick={handleCollectionClick}
+        selectedCollectionId={selectedCollectionId}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
