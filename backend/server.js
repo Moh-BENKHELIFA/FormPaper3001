@@ -12,6 +12,7 @@ const collectionsRoutes = require('./routes/collections');
 const imageUploadRoutes = require('./routes/imageUpload');
 const notesStorageRoutes = require('./routes/notesStorage');
 const aiRoutes = require('./routes/aiRoutes');
+const zoteroRoutes = require('./routes/zotero');
 
 const app = express();
 const PORT = process.env.PORT || 5004;
@@ -428,6 +429,7 @@ app.use('/api', collectionsRoutes);
 app.use('/api', imageUploadRoutes);
 app.use('/api', notesStorageRoutes);
 app.use('/api', aiRoutes);
+app.use('/api', zoteroRoutes);
 
 // Route pour uploader l'image de couverture d'un article
 app.post('/api/papers/:id/cover-image', imageUpload.single('coverImage'), async (req, res) => {

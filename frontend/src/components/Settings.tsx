@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { PaperStats, Tag } from '../types/Paper';
 import { paperService } from '../services/paperService';
 import { collectionService, Collection } from '../services/collectionService';
+import { zoteroService, ZoteroConfig } from '../services/zoteroService';
 import Sidebar from './Sidebar';
 import Modal from './Modal';
 
@@ -53,6 +54,15 @@ const Settings: React.FC = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  // Zotero states
+  const [zoteroConfig, setZoteroConfig] = useState<ZoteroConfig | null>(null);
+  const [zoteroUserId, setZoteroUserId] = useState('');
+  const [zoteroApiKey, setZoteroApiKey] = useState('');
+  const [zoteroLibraryType, setZoteroLibraryType] = useState<'user' | 'group'>('user');
+  const [isTestingZotero, setIsTestingZotero] = useState(false);
+  const [isSavingZotero, setIsSavingZotero] = useState(false);
+  const [showZoteroConfig, setShowZoteroConfig] = useState(false);
+
   const emptyStats: PaperStats = {
     total: 0,
     unread: 0,
@@ -68,6 +78,8 @@ const Settings: React.FC = () => {
       loadCollections();
     } else if (activeSection === 'ai') {
       loadOllamaData();
+    } else if (activeSection === 'integrations') {
+      loadZoteroConfig();
     }
   }, [activeSection]);
 
@@ -492,6 +504,84 @@ const Settings: React.FC = () => {
     setShowResetDatabaseModal(true);
   };
 
+  const loadZoteroConfig = async () => {
+    try {
+      const config = await zoteroService.getConfig();
+      setZoteroConfig(config);
+      if (config.configured) {
+        setShowZoteroConfig(true);
+      }
+    } catch (err) {
+      console.error('Error loading Zotero config:', err);
+    }
+  };
+
+  const handleTestZoteroConnection = async () => {
+    if (!zoteroUserId.trim() || !zoteroApiKey.trim()) {
+      error('Erreur', 'User ID et API Key sont requis');
+      return;
+    }
+
+    try {
+      setIsTestingZotero(true);
+      const result = await zoteroService.testConnection(zoteroUserId.trim(), zoteroApiKey.trim());
+
+      if (result.success) {
+        success('Connexion réussie', result.message);
+      } else {
+        error('Échec de connexion', result.message);
+      }
+    } catch (err: any) {
+      error('Erreur', err.message || 'Impossible de tester la connexion');
+    } finally {
+      setIsTestingZotero(false);
+    }
+  };
+
+  const handleSaveZoteroConfig = async () => {
+    if (!zoteroUserId.trim() || !zoteroApiKey.trim()) {
+      error('Erreur', 'User ID et API Key sont requis');
+      return;
+    }
+
+    try {
+      setIsSavingZotero(true);
+      const result = await zoteroService.saveConfig(
+        zoteroUserId.trim(),
+        zoteroApiKey.trim(),
+        zoteroLibraryType
+      );
+
+      if (result.success) {
+        success('Configuration sauvegardée', result.message);
+        setZoteroUserId('');
+        setZoteroApiKey('');
+        loadZoteroConfig();
+      }
+    } catch (err: any) {
+      error('Erreur', err.message || 'Impossible de sauvegarder la configuration');
+    } finally {
+      setIsSavingZotero(false);
+    }
+  };
+
+  const handleDeleteZoteroConfig = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer la configuration Zotero ?')) {
+      return;
+    }
+
+    try {
+      const result = await zoteroService.deleteConfig();
+      if (result.success) {
+        success('Configuration supprimée', result.message);
+        setZoteroConfig(null);
+        setShowZoteroConfig(false);
+      }
+    } catch (err: any) {
+      error('Erreur', err.message || 'Impossible de supprimer la configuration');
+    }
+  };
+
   const predefinedColors = [
     '#3B82F6', '#EF4444', '#10B981', '#F59E0B',
     '#8B5CF6', '#EC4899', '#6B7280', '#14B8A6',
@@ -721,6 +811,7 @@ const Settings: React.FC = () => {
 
   const renderIntegrationsSettings = () => (
     <div className="space-y-6">
+      {/* Zotero Integration */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Intégrations</h3>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -732,21 +823,157 @@ const Settings: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Zotero</h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-500">Synchroniser avec votre bibliothèque Zotero</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                    {zoteroConfig?.configured
+                      ? `Connecté: ${zoteroConfig.user_id} (${zoteroConfig.library_type})`
+                      : 'Synchroniser avec votre bibliothèque Zotero'}
+                  </p>
                 </div>
               </div>
-              <button className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600">
-                Configurer
-              </button>
+              <div className="flex items-center space-x-2">
+                {zoteroConfig?.configured ? (
+                  <>
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-xs text-green-600 dark:text-green-400">Configuré</span>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setShowZoteroConfig(!showZoteroConfig)}
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Configurer
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="px-4 pb-4">
-            <div className="text-center py-4 text-gray-500 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 rounded">
-              <p>Intégration Zotero en cours de développement</p>
-              <p className="text-sm mt-1">Bientôt disponible pour importer/exporter vos articles</p>
+          {/* Configuration Form */}
+          {(showZoteroConfig || zoteroConfig?.configured) && (
+            <div className="px-4 pb-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+              {zoteroConfig?.configured ? (
+                <div className="space-y-4">
+                  <div className="bg-green-50 dark:bg-gray-900 border border-green-200 dark:border-green-700 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h5 className="text-sm font-medium text-green-800 dark:text-green-400 mb-2">Configuration active</h5>
+                        <div className="space-y-1 text-sm text-green-700 dark:text-green-400">
+                          <p><strong>User ID:</strong> {zoteroConfig.user_id}</p>
+                          <p><strong>Type:</strong> {zoteroConfig.library_type === 'user' ? 'Bibliothèque personnelle' : 'Bibliothèque de groupe'}</p>
+                          <p><strong>API Key:</strong> {zoteroConfig.api_key_preview || '••••••'}</p>
+                          {zoteroConfig.last_sync && (
+                            <p><strong>Dernière sync:</strong> {new Date(zoteroConfig.last_sync).toLocaleString()}</p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleDeleteZoteroConfig}
+                        className="px-3 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded border border-red-300 dark:border-red-700"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 dark:bg-gray-900 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                    <h5 className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">Comment utiliser l'intégration Zotero</h5>
+                    <ul className="text-sm text-blue-700 dark:text-blue-400 space-y-1 ml-4">
+                      <li>• Allez dans "Ajouter un article"</li>
+                      <li>• Cliquez sur "Importer depuis Zotero"</li>
+                      <li>• Sélectionnez les articles à importer</li>
+                      <li>• Les métadonnées seront automatiquement récupérées</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 dark:bg-gray-900 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                    <h5 className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">Configuration Zotero</h5>
+                    <p className="text-sm text-blue-700 dark:text-blue-400">
+                      Pour connecter votre bibliothèque Zotero, vous aurez besoin de votre User ID et d'une clé API.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Type de bibliothèque
+                    </label>
+                    <div className="flex space-x-4">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="user"
+                          checked={zoteroLibraryType === 'user'}
+                          onChange={(e) => setZoteroLibraryType(e.target.value as 'user')}
+                          className="mr-2"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Personnelle</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="group"
+                          checked={zoteroLibraryType === 'group'}
+                          onChange={(e) => setZoteroLibraryType(e.target.value as 'group')}
+                          className="mr-2"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Groupe</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      User ID Zotero
+                    </label>
+                    <input
+                      type="text"
+                      value={zoteroUserId}
+                      onChange={(e) => setZoteroUserId(e.target.value)}
+                      placeholder="Votre User ID Zotero"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Trouvez votre User ID dans <a href="https://www.zotero.org/settings/keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Zotero Settings</a>
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Clé API Zotero
+                    </label>
+                    <input
+                      type="password"
+                      value={zoteroApiKey}
+                      onChange={(e) => setZoteroApiKey(e.target.value)}
+                      placeholder="Votre clé API Zotero"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Créez une nouvelle clé API sur <a href="https://www.zotero.org/settings/keys/new" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Zotero Keys</a>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-end space-x-3">
+                    <button
+                      onClick={handleTestZoteroConnection}
+                      disabled={isTestingZotero || !zoteroUserId.trim() || !zoteroApiKey.trim()}
+                      className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                    >
+                      {isTestingZotero ? 'Test en cours...' : 'Tester la connexion'}
+                    </button>
+                    <button
+                      onClick={handleSaveZoteroConfig}
+                      disabled={isSavingZotero || !zoteroUserId.trim() || !zoteroApiKey.trim()}
+                      className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {isSavingZotero ? 'Sauvegarde...' : 'Sauvegarder'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

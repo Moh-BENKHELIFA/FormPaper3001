@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS papers (
   doi TEXT UNIQUE,
   url TEXT,
   folder_path TEXT,
+  zotero_key TEXT UNIQUE,
+  is_favorite INTEGER DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -66,10 +68,23 @@ CREATE TABLE IF NOT EXISTS descriptions (
   FOREIGN KEY (paper_id) REFERENCES papers (id) ON DELETE CASCADE
 );
 
+-- Table de configuration Zotero
+CREATE TABLE IF NOT EXISTS zotero_config (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT,
+  api_key TEXT,
+  library_type TEXT DEFAULT 'user' CHECK (library_type IN ('user', 'group')),
+  last_sync DATETIME,
+  last_version INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Index pour améliorer les performances
 CREATE INDEX IF NOT EXISTS idx_papers_status ON papers(reading_status);
 CREATE INDEX IF NOT EXISTS idx_papers_created_at ON papers(created_at);
 CREATE INDEX IF NOT EXISTS idx_papers_doi ON papers(doi);
+CREATE INDEX IF NOT EXISTS idx_papers_zotero_key ON papers(zotero_key);
 CREATE INDEX IF NOT EXISTS idx_paper_collections_paper_id ON paper_collections(paper_id);
 CREATE INDEX IF NOT EXISTS idx_paper_collections_collection_id ON paper_collections(collection_id);
 CREATE INDEX IF NOT EXISTS idx_paper_tags_paper_id ON paper_tags(paper_id);

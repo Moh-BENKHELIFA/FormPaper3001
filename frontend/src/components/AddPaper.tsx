@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Upload, Link, Loader2, Plus, X } from 'lucide-react';
+import { ArrowLeft, Upload, Link, Loader2, Plus, X, BookMarked } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
+import { zoteroService, ZoteroItem } from '../services/zoteroService';
 import { DOIMetadata, Tag } from '../types/Paper';
 
 const AddPaper: React.FC = () => {
   const { goToHome } = useNavigation();
   const { success: showSuccess, error: showError } = useToast();
-  const [activeTab, setActiveTab] = useState<'doi' | 'pdf'>('doi');
+  const [activeTab, setActiveTab] = useState<'doi' | 'pdf' | 'zotero'>('doi');
   const [doi, setDoi] = useState('');
   const [metadata, setMetadata] = useState<DOIMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,9 +30,28 @@ const AddPaper: React.FC = () => {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [selectedCoverFromExtracted, setSelectedCoverFromExtracted] = useState<string | null>(null);
 
+  // Zotero states
+  const [zoteroItems, setZoteroItems] = useState<ZoteroItem[]>([]);
+  const [isLoadingZotero, setIsLoadingZotero] = useState(false);
+  const [selectedZoteroItems, setSelectedZoteroItems] = useState<string[]>([]);
+  const [zoteroConfigured, setZoteroConfigured] = useState(false);
+  const [zoteroCollections, setZoteroCollections] = useState<any[]>([]);
+  const [zoteroSearchQuery, setZoteroSearchQuery] = useState('');
+  const [selectedZoteroCollection, setSelectedZoteroCollection] = useState<string>('');
+  const [selectedZoteroTag, setSelectedZoteroTag] = useState<string>('');
+  const [showOnlyWithPDF, setShowOnlyWithPDF] = useState(false);
+
   useEffect(() => {
     loadTags();
+    checkZoteroConfig();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'zotero' && zoteroConfigured) {
+      loadZoteroItems();
+      loadZoteroCollections();
+    }
+  }, [activeTab, zoteroConfigured]);
 
   const loadTags = async () => {
     try {
@@ -39,6 +59,111 @@ const AddPaper: React.FC = () => {
       setAvailableTags(tags);
     } catch (err) {
       console.error('Failed to load tags:', err);
+    }
+  };
+
+  const checkZoteroConfig = async () => {
+    try {
+      const config = await zoteroService.getConfig();
+      setZoteroConfigured(config.configured);
+    } catch (err) {
+      console.error('Failed to check Zotero config:', err);
+      setZoteroConfigured(false);
+    }
+  };
+
+  const loadZoteroItems = async () => {
+    try {
+      setIsLoadingZotero(true);
+      // Charger tous les items sans limite
+      const result = await zoteroService.fetchItems({ limit: 10000 });
+      setZoteroItems(result.items);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erreur lors du chargement des items Zotero');
+    } finally {
+      setIsLoadingZotero(false);
+    }
+  };
+
+  const loadZoteroCollections = async () => {
+    try {
+      const collections = await zoteroService.fetchCollections();
+      setZoteroCollections(collections);
+    } catch (err) {
+      console.error('Failed to load Zotero collections:', err);
+    }
+  };
+
+  const handleZoteroItemToggle = (itemKey: string) => {
+    setSelectedZoteroItems(prev =>
+      prev.includes(itemKey)
+        ? prev.filter(k => k !== itemKey)
+        : [...prev, itemKey]
+    );
+  };
+
+  // Filtrer les items Zotero
+  const getFilteredZoteroItems = () => {
+    return zoteroItems.filter(item => {
+      // Exclure les attachments
+      if (item.data.itemType === 'attachment') return false;
+
+      // Filtre par recherche
+      if (zoteroSearchQuery) {
+        const query = zoteroSearchQuery.toLowerCase();
+        const matchesTitle = item.data.title?.toLowerCase().includes(query);
+        const matchesAuthors = item.data.creators?.some(c =>
+          `${c.firstName} ${c.lastName}`.toLowerCase().includes(query) ||
+          c.name?.toLowerCase().includes(query)
+        );
+        if (!matchesTitle && !matchesAuthors) return false;
+      }
+
+      // Filtre par collection
+      if (selectedZoteroCollection && !item.data.collections?.includes(selectedZoteroCollection)) {
+        return false;
+      }
+
+      // Filtre par tag
+      if (selectedZoteroTag && !item.data.tags?.some(t => t.tag === selectedZoteroTag)) {
+        return false;
+      }
+
+      return true;
+    });
+  };
+
+  // Extraire tous les tags uniques de Zotero
+  const getAllZoteroTags = () => {
+    const tagsSet = new Set<string>();
+    zoteroItems.forEach(item => {
+      item.data.tags?.forEach(t => tagsSet.add(t.tag));
+    });
+    return Array.from(tagsSet).sort();
+  };
+
+  const handleImportFromZotero = async () => {
+    if (selectedZoteroItems.length === 0) {
+      showError('Veuillez sélectionner au moins un article');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const result = await zoteroService.importItems(selectedZoteroItems);
+
+      if (result.success) {
+        showSuccess(`${result.imported} article(s) importé(s) avec succès`);
+        if (result.errors > 0) {
+          showError(`${result.errors} article(s) n'ont pas pu être importés`);
+        }
+        setSelectedZoteroItems([]);
+        goToHome();
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erreur lors de l\'importation');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -334,6 +459,12 @@ const AddPaper: React.FC = () => {
       label: 'Télécharger PDF',
       icon: Upload,
       description: 'Extraire DOI et images du PDF',
+    },
+    {
+      id: 'zotero' as const,
+      label: 'Importer depuis Zotero',
+      icon: BookMarked,
+      description: 'Importer depuis votre bibliothèque Zotero',
     },
   ];
 
@@ -1195,6 +1326,222 @@ const AddPaper: React.FC = () => {
                       </button>
                     </div>
                   </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'zotero' && (
+              <div className="space-y-6">
+                {!zoteroConfigured ? (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-lg p-6">
+                    <div className="flex items-start space-x-3">
+                      <BookMarked className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="text-lg font-medium text-yellow-900 dark:text-yellow-400 mb-2">
+                          Configuration Zotero requise
+                        </h3>
+                        <p className="text-sm text-yellow-800 dark:text-yellow-400 mb-4">
+                          Pour importer des articles depuis Zotero, vous devez d'abord configurer votre connexion dans les paramètres.
+                        </p>
+                        <button
+                          onClick={() => window.open('/settings', '_blank')}
+                          className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm font-medium"
+                        >
+                          Configurer Zotero
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {isLoadingZotero ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-4" />
+                        <p className="text-gray-600 dark:text-gray-400">Chargement de votre bibliothèque Zotero...</p>
+                      </div>
+                    ) : zoteroItems.length === 0 ? (
+                      <div className="text-center py-12">
+                        <BookMarked className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                        <p className="text-gray-600 dark:text-gray-400">Aucun article trouvé dans votre bibliothèque Zotero</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Filtres de recherche */}
+                        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                          <div className="flex flex-wrap gap-3">
+                            {/* Barre de recherche */}
+                            <input
+                              type="text"
+                              placeholder="Rechercher par titre ou auteur..."
+                              value={zoteroSearchQuery}
+                              onChange={(e) => setZoteroSearchQuery(e.target.value)}
+                              className="flex-1 min-w-[200px] px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                            />
+
+                            {/* Filtre par collection */}
+                            <select
+                              value={selectedZoteroCollection}
+                              onChange={(e) => setSelectedZoteroCollection(e.target.value)}
+                              className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                            >
+                              <option value="">Toutes les collections</option>
+                              {zoteroCollections.map((collection) => (
+                                <option key={collection.key} value={collection.key}>
+                                  {collection.data.name}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Filtre par tag */}
+                            <select
+                              value={selectedZoteroTag}
+                              onChange={(e) => setSelectedZoteroTag(e.target.value)}
+                              className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                            >
+                              <option value="">Tous les tags</option>
+                              {getAllZoteroTags().map((tag) => (
+                                <option key={tag} value={tag}>
+                                  {tag}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Bouton réinitialiser */}
+                            {(zoteroSearchQuery || selectedZoteroCollection || selectedZoteroTag) && (
+                              <button
+                                onClick={() => {
+                                  setZoteroSearchQuery('');
+                                  setSelectedZoteroCollection('');
+                                  setSelectedZoteroTag('');
+                                }}
+                                className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                              >
+                                Réinitialiser
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-blue-800 dark:text-blue-300">
+                                {getFilteredZoteroItems().length} article(s) affiché(s)
+                                {getFilteredZoteroItems().length !== zoteroItems.filter(item => item.data.itemType !== 'attachment').length && (
+                                  <span className="ml-1 text-xs">
+                                    sur {zoteroItems.filter(item => item.data.itemType !== 'attachment').length} total
+                                  </span>
+                                )}
+                              </p>
+                              {selectedZoteroItems.length > 0 && (
+                                <p className="text-sm text-blue-800 dark:text-blue-300 mt-1">
+                                  {selectedZoteroItems.length} article(s) sélectionné(s) pour l'import
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setSelectedZoteroItems(
+                                  getFilteredZoteroItems().map(item => item.key)
+                                )}
+                                className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                              >
+                                Tout sélectionner
+                              </button>
+                              {selectedZoteroItems.length > 0 && (
+                                <button
+                                  onClick={() => setSelectedZoteroItems([])}
+                                  className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                                >
+                                  Tout désélectionner
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 450px)' }}>
+                          {getFilteredZoteroItems().map((item) => {
+                              const isSelected = selectedZoteroItems.includes(item.key);
+                              return (
+                                <div
+                                  key={item.key}
+                                  onClick={() => handleZoteroItemToggle(item.key)}
+                                  className={`p-2 border rounded cursor-pointer transition-all ${
+                                    isSelected
+                                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => handleZoteroItemToggle(item.key)}
+                                      className="flex-shrink-0"
+                                    />
+                                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                                      <h4 className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate flex-1">
+                                        {item.data.title || 'Sans titre'}
+                                      </h4>
+                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                        {item.data.creators && item.data.creators.length > 0 && (
+                                          <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]">
+                                            {item.data.creators[0].lastName || item.data.creators[0].name || ''}
+                                            {item.data.creators.length > 1 && ` et al.`}
+                                          </span>
+                                        )}
+                                        {item.data.date && (
+                                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                                            {item.data.date.split('-')[0] || item.data.date}
+                                          </span>
+                                        )}
+                                        {(item.data.publicationTitle || item.data.conferenceName) && (
+                                          <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded truncate max-w-[150px]">
+                                            {item.data.publicationTitle || item.data.conferenceName}
+                                          </span>
+                                        )}
+                                        <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">
+                                          {item.data.itemType}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+
+                        {selectedZoteroItems.length > 0 && (
+                          <div className="flex justify-end space-x-3">
+                            <button
+                              onClick={() => setSelectedZoteroItems([])}
+                              className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                              Annuler la sélection
+                            </button>
+                            <button
+                              onClick={handleImportFromZotero}
+                              disabled={isLoading}
+                              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                            >
+                              {isLoading ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  <span>Import en cours...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <BookMarked className="w-4 h-4" />
+                                  <span>Importer {selectedZoteroItems.length} article(s)</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             )}
