@@ -19,7 +19,8 @@ const HomePage: React.FC = () => {
     read: 0,
     favorite: 0,
   });
-  const [filteredPapers, setFilteredPapers] = useState<Paper[]>([]);
+  const [collectionPapers, setCollectionPapers] = useState<Paper[]>([]);
+  const [displayedPapers, setDisplayedPapers] = useState<Paper[]>([]);
   const [activeStatFilter, setActiveStatFilter] = useState<string | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<number | null>(null);
 
@@ -34,15 +35,11 @@ const HomePage: React.FC = () => {
       loadCollectionPapers(selectedCollectionId);
     } else {
       // Si aucune collection sélectionnée, afficher tous les papers
-      setFilteredPapers(papers);
+      setCollectionPapers(papers);
+      setDisplayedPapers(papers);
       loadStats();
     }
-  }, [selectedCollectionId]);
-
-  useEffect(() => {
-    // Recalculer les stats quand les papiers filtrés changent
-    calculateStats(filteredPapers);
-  }, [filteredPapers]);
+  }, [selectedCollectionId, papers]);
 
   const loadPapers = async () => {
     try {
@@ -50,7 +47,8 @@ const HomePage: React.FC = () => {
       const papersData = await paperService.getAllPapers();
       setPapers(papersData);
       if (selectedCollectionId === null) {
-        setFilteredPapers(papersData);
+        setCollectionPapers(papersData);
+        setDisplayedPapers(papersData);
       }
     } catch (err) {
       error('Erreur', 'Impossible de charger les articles');
@@ -64,7 +62,11 @@ const HomePage: React.FC = () => {
     try {
       setIsLoading(true);
       const collection = await collectionService.getCollection(collectionId);
-      setFilteredPapers(collection.papers || []);
+      const collectionPapersData = collection.papers || [];
+      setCollectionPapers(collectionPapersData);
+      setDisplayedPapers(collectionPapersData);
+      // Calculer les stats pour cette collection uniquement
+      calculateStats(collectionPapersData);
     } catch (err) {
       error('Erreur', 'Impossible de charger les articles de la collection');
       console.error('Error loading collection papers:', err);
@@ -113,39 +115,41 @@ const HomePage: React.FC = () => {
   };
 
   const handleFilterChange = (filtered: Paper[]) => {
-    setFilteredPapers(filtered);
+    setDisplayedPapers(filtered);
     setActiveStatFilter(null); // Reset stat filter when using TopMenu filters
   };
 
   const handleStatFilterClick = (filterType: string) => {
     if (activeStatFilter === filterType) {
-      // Si on clique sur le même filtre, on le désactive
+      // Si on clique sur le même filtre, on le désactive et on affiche tous les papiers de la collection/vue actuelle
       setActiveStatFilter(null);
-      setFilteredPapers(papers);
+      setDisplayedPapers(collectionPapers);
       return;
     }
 
     setActiveStatFilter(filterType);
 
-    let filtered = [...papers];
+    // Filtrer les papiers de la collection/vue actuelle (pas tous les papiers)
+    let filtered = [...collectionPapers];
     switch (filterType) {
       case 'total':
-        filtered = papers;
+        filtered = collectionPapers;
         break;
       case 'unread':
-        filtered = papers.filter(p => p.reading_status === 'unread');
+        filtered = collectionPapers.filter(p => p.reading_status === 'unread');
         break;
       case 'reading':
-        filtered = papers.filter(p => p.reading_status === 'reading');
+        filtered = collectionPapers.filter(p => p.reading_status === 'reading');
         break;
       case 'read':
-        filtered = papers.filter(p => p.reading_status === 'read');
+        filtered = collectionPapers.filter(p => p.reading_status === 'read');
         break;
       case 'favorite':
-        filtered = papers.filter(p => p.is_favorite === 1);
+        filtered = collectionPapers.filter(p => p.is_favorite === 1);
         break;
     }
-    setFilteredPapers(filtered);
+    setDisplayedPapers(filtered);
+    // NE PAS recalculer les stats - elles restent fixes
   };
 
   const handleCollectionClick = (collectionId: number) => {
@@ -177,11 +181,12 @@ const HomePage: React.FC = () => {
         />
 
         <MainContent
-          papers={filteredPapers}
+          papers={displayedPapers}
           isLoading={isLoading}
           onPapersChange={handlePapersChange}
           onPaperUpdate={handlePaperUpdate}
           onStatsUpdate={loadStats}
+          selectedCollectionId={selectedCollectionId}
         />
       </div>
     </div>

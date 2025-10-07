@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, Heart, BookOpen, Eye, CheckCircle, Trash2, Globe } from 'lucide-react';
+import { Loader2, Heart, BookOpen, Eye, CheckCircle, Trash2, Globe, Plus } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -252,6 +252,7 @@ interface MainContentProps {
   onPapersChange: () => void;
   onPaperUpdate?: (paper: Paper) => void;
   onStatsUpdate?: () => void;
+  selectedCollectionId?: number | null;
 }
 
 const MainContent: React.FC<MainContentProps> = ({
@@ -259,9 +260,10 @@ const MainContent: React.FC<MainContentProps> = ({
   isLoading,
   onPapersChange,
   onPaperUpdate,
-  onStatsUpdate
+  onStatsUpdate,
+  selectedCollectionId
 }) => {
-  const { viewMode } = useNavigation();
+  const { viewMode, goToCreateCollection } = useNavigation();
 
   if (isLoading) {
     return (
@@ -303,6 +305,17 @@ const MainContent: React.FC<MainContentProps> = ({
           onStatsUpdate={onStatsUpdate}
         />
       ))}
+      {selectedCollectionId && (
+        <button
+          onClick={() => goToCreateCollection(selectedCollectionId)}
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-lg transition-all duration-200 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex flex-col items-center justify-center p-8 min-h-[300px]"
+        >
+          <Plus className="w-12 h-12 text-gray-400 dark:text-gray-500 mb-3" />
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+            Ajouter des articles
+          </span>
+        </button>
+      )}
     </div>
   );
 
@@ -329,6 +342,17 @@ const MainContent: React.FC<MainContentProps> = ({
           </div>
         </div>
       ))}
+      {selectedCollectionId && (
+        <button
+          onClick={() => goToCreateCollection(selectedCollectionId)}
+          className="card p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center justify-center space-x-3"
+        >
+          <Plus className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+            Ajouter des articles à cette collection
+          </span>
+        </button>
+      )}
     </div>
   );
 
@@ -376,6 +400,21 @@ const MainContent: React.FC<MainContentProps> = ({
               </td>
             </tr>
           ))}
+          {selectedCollectionId && (
+            <tr className="bg-gray-50 dark:bg-gray-800">
+              <td colSpan={5} className="px-6 py-3">
+                <button
+                  onClick={() => goToCreateCollection(selectedCollectionId)}
+                  className="w-full p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                >
+                  <Plus className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+                    Ajouter des articles
+                  </span>
+                </button>
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
@@ -393,6 +432,17 @@ const MainContent: React.FC<MainContentProps> = ({
             onStatsUpdate={onStatsUpdate}
           />
         ))}
+        {selectedCollectionId && (
+          <button
+            onClick={() => goToCreateCollection(selectedCollectionId)}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-lg transition-all duration-200 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex flex-col items-center justify-center aspect-[2/3]"
+          >
+            <Plus className="w-8 h-8 text-gray-400 dark:text-gray-500 mb-2" />
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 px-2 text-center">
+              Ajouter
+            </span>
+          </button>
+        )}
       </div>
     );
   };
