@@ -290,6 +290,75 @@ router.post('/zotero/import', async (req, res) => {
             // Sauvegarder le PDF dans le dossier de l'article
             await fs.writeFile(pdfFilePath, pdfData);
             console.log(`✅ PDF downloaded and saved: ${pdfFilePath}`);
+
+            // Extraire la première image pour la couverture
+            try {
+              const { spawn } = require('child_process');
+              const pythonScript = path.join(__dirname, '..', 'scripts', 'extract_images.py');
+              const tempExtractDir = path.join(paperFolderPath, 'temp_extract');
+              await fs.mkdir(tempExtractDir, { recursive: true });
+
+              // Extraire les images du PDF
+              const extractedImages = await new Promise((resolve, reject) => {
+                const python = spawn('python', [pythonScript, pdfFilePath, tempExtractDir]);
+                let result = '';
+                let error = '';
+
+                python.stdout.on('data', (data) => { result += data.toString(); });
+                python.stderr.on('data', (data) => { error += data.toString(); });
+
+                python.on('close', (code) => {
+                  if (code === 0 && result.trim()) {
+                    try {
+                      const images = JSON.parse(result);
+                      resolve(images);
+                    } catch (e) {
+                      resolve([]);
+                    }
+                  } else {
+                    resolve([]);
+                  }
+                });
+              });
+
+              // Filtrer les logos (images < 30KB) et trouver la première image significative
+              const imagesWithoutLogos = extractedImages.filter(img => img.size > 30000);
+
+              let coverImage = null;
+              if (imagesWithoutLogos.length > 0) {
+                // Ignorer la première image si elle est petite (probablement un logo)
+                // et prendre la suivante si elle existe, sinon prendre la première
+                if (imagesWithoutLogos.length > 1 && imagesWithoutLogos[0].size < 100000) {
+                  coverImage = imagesWithoutLogos[1];
+                } else {
+                  coverImage = imagesWithoutLogos[0];
+                }
+              }
+
+              if (coverImage) {
+                const coverFileName = `paper_Cover_${paperId}${path.extname(coverImage.filename)}`;
+                const coverFilePath = path.join(paperFolderPath, coverFileName);
+
+                // Copier l'image comme couverture
+                await fs.copyFile(coverImage.path, coverFilePath);
+
+                // Mettre à jour le paper avec l'image de couverture
+                const coverImagePath = `MyPapers/${folderPath}/${coverFileName}`;
+                await db.run(
+                  'UPDATE papers SET image = ? WHERE id = ?',
+                  [coverImagePath, paperId]
+                );
+
+                console.log(`✅ Cover image extracted and saved: ${coverFilePath}`);
+              }
+
+              // Nettoyer le dossier temporaire
+              await fs.rm(tempExtractDir, { recursive: true, force: true });
+
+            } catch (coverError) {
+              console.error(`Error extracting cover image for ${item.key}:`, coverError);
+              // Ne pas bloquer l'import si l'extraction échoue
+            }
           }
         } catch (pdfError) {
           console.error(`Error creating folder or downloading PDF for ${item.key}:`, pdfError);
