@@ -222,4 +222,22 @@ export const zoteroService = {
       throw new Error(error instanceof Error ? error.message : 'Erreur lors de l\'importation');
     }
   },
+
+  /**
+   * Chercher et télécharger un PDF pour un item Zotero
+   */
+  async findPdf(itemKey: string, paperId?: number): Promise<{ success: boolean; message: string; source?: string; pdfPath?: string }> {
+    try {
+      const response = await api.post<{ success: boolean; message: string; source?: string; pdfPath?: string }>('/zotero/find-pdf', {
+        itemKey,
+        paperId,
+      });
+      return response.data;
+    } catch (error) {
+      if (error.response) {
+        throw new Error(error.response.data.message || 'Erreur lors de la recherche du PDF');
+      }
+      throw new Error(error instanceof Error ? error.message : 'Erreur lors de la recherche du PDF');
+    }
+  },
 };

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const zoteroService = require('../src/services/zoteroService');
+const pdfFinderService = require('../src/services/pdfFinderService');
 const db = require('../src/database/database');
 const fs = require('fs').promises;
 const path = require('path');
@@ -300,14 +301,45 @@ router.post('/zotero/import', async (req, res) => {
             child.data.contentType === 'application/pdf'
           );
 
+          let pdfData = null;
+          let pdfFilePath = null;
+
           if (pdfAttachment) {
-            const pdfData = await zoteroService.downloadFile(pdfAttachment.key);
+            // PDF disponible dans Zotero
+            pdfData = await zoteroService.downloadFile(pdfAttachment.key);
             const pdfFileName = `${cleanTitle}_${paperId}.pdf`;
-            const pdfFilePath = path.join(paperFolderPath, pdfFileName);
+            pdfFilePath = path.join(paperFolderPath, pdfFileName);
 
             // Sauvegarder le PDF dans le dossier de l'article
             await fs.writeFile(pdfFilePath, pdfData);
-            console.log(`✅ PDF downloaded and saved: ${pdfFilePath}`);
+            console.log(`✅ PDF downloaded from Zotero: ${pdfFilePath}`);
+          } else {
+            // Pas de PDF dans Zotero, chercher automatiquement
+            console.log(`🔍 No PDF in Zotero, searching automatically for: ${paper.title}`);
+            try {
+              const findResult = await pdfFinderService.findPdf(item);
+
+              if (findResult.success) {
+                console.log(`✅ PDF found on ${findResult.source}, downloading...`);
+                pdfData = await pdfFinderService.downloadPdf(findResult.pdfUrl);
+
+                const pdfFileName = `${cleanTitle}_${paperId}.pdf`;
+                pdfFilePath = path.join(paperFolderPath, pdfFileName);
+
+                // Sauvegarder le PDF trouvé
+                await fs.writeFile(pdfFilePath, pdfData);
+                console.log(`✅ PDF downloaded from ${findResult.source}: ${pdfFilePath}`);
+              } else {
+                console.log(`❌ No PDF found for: ${paper.title}`);
+              }
+            } catch (searchError) {
+              console.error(`⚠️ Error searching for PDF: ${searchError.message}`);
+              // Ne pas bloquer l'import si la recherche échoue
+            }
+          }
+
+          // Extraire l'image de couverture seulement si un PDF existe
+          if (pdfFilePath && pdfData) {
 
             // Extraire la première image pour la couverture
             try {
@@ -377,7 +409,7 @@ router.post('/zotero/import', async (req, res) => {
               console.error(`Error extracting cover image for ${item.key}:`, coverError);
               // Ne pas bloquer l'import si l'extraction échoue
             }
-          }
+          } // Fin du if (pdfFilePath && pdfData)
         } catch (pdfError) {
           console.error(`Error creating folder or downloading PDF for ${item.key}:`, pdfError);
           // Ne pas bloquer l'import si le PDF échoue
@@ -412,6 +444,119 @@ router.post('/zotero/import', async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Erreur lors de l\'importation',
+    });
+  }
+});
+
+/**
+ * Chercher et télécharger un PDF pour un item Zotero
+ * POST /api/zotero/find-pdf
+ */
+router.post('/zotero/find-pdf', async (req, res) => {
+  try {
+    const { itemKey, paperId } = req.body;
+
+    if (!itemKey) {
+      return res.status(400).json({
+        success: false,
+        message: 'itemKey est requis',
+      });
+    }
+
+    // Récupérer l'item depuis Zotero
+    const { items } = await zoteroService.fetchItems({ limit: 1000 });
+    const item = items.find(i => i.key === itemKey);
+
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: 'Item Zotero non trouvé',
+      });
+    }
+
+    // Chercher le PDF avec toutes les sources
+    console.log(`🔍 Starting PDF search for: ${item.data.title}`);
+    const findResult = await pdfFinderService.findPdf(item);
+
+    if (!findResult.success) {
+      return res.json({
+        success: false,
+        message: 'PDF non trouvé',
+        attemptedSources: findResult.attemptedSources,
+      });
+    }
+
+    // Télécharger le PDF
+    console.log(`📥 Downloading PDF from ${findResult.source}`);
+    const pdfBuffer = await pdfFinderService.downloadPdf(findResult.pdfUrl);
+
+    // Si un paperId est fourni, sauvegarder le PDF dans le dossier MyPapers
+    if (paperId) {
+      const paper = await db.get('SELECT * FROM papers WHERE id = ?', [paperId]);
+
+      if (paper) {
+        // Extraire le nom du dossier depuis folder_path s'il existe
+        let folderPath = paper.folder_path;
+
+        if (!folderPath) {
+          // Créer le dossier si nécessaire
+          let cleanTitle = paper.title
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '_')
+            .toLowerCase();
+
+          if (cleanTitle.length > 50) {
+            cleanTitle = cleanTitle.substring(0, 50);
+          }
+
+          folderPath = `${cleanTitle}_${paperId}`;
+          const paperFolderPath = path.join(__dirname, '..', 'MyPapers', folderPath);
+          await fs.mkdir(paperFolderPath, { recursive: true });
+
+          // Mettre à jour folder_path dans la BD
+          await db.run('UPDATE papers SET folder_path = ? WHERE id = ?', [folderPath, paperId]);
+        }
+
+        const paperFolderPath = path.join(__dirname, '..', 'MyPapers', folderPath);
+
+        // Créer le dossier s'il n'existe pas
+        await fs.mkdir(paperFolderPath, { recursive: true });
+
+        // Nom du fichier PDF
+        const pdfFileName = `${folderPath}.pdf`;
+        const pdfFilePath = path.join(paperFolderPath, pdfFileName);
+
+        // Sauvegarder le PDF
+        await fs.writeFile(pdfFilePath, pdfBuffer);
+
+        // Mettre à jour le chemin du PDF dans la base de données
+        const pdfDbPath = `MyPapers/${folderPath}/${pdfFileName}`;
+        await db.run('UPDATE papers SET pdf_path = ? WHERE id = ?', [pdfDbPath, paperId]);
+
+        console.log(`✅ PDF saved to: ${pdfFilePath}`);
+
+        return res.json({
+          success: true,
+          message: `PDF trouvé et téléchargé depuis ${findResult.source}`,
+          source: findResult.source,
+          pdfPath: pdfDbPath,
+        });
+      }
+    }
+
+    // Si pas de paperId, juste retourner le succès de la recherche
+    return res.json({
+      success: true,
+      message: `PDF trouvé sur ${findResult.source}`,
+      source: findResult.source,
+      pdfUrl: findResult.pdfUrl,
+    });
+
+  } catch (error) {
+    console.error('Error finding PDF:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur lors de la recherche du PDF',
     });
   }
 });

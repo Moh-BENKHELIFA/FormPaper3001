@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Upload, Link, Loader2, Plus, X, BookMarked, FileText, FileX, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Upload, Link, Loader2, Plus, X, BookMarked, FileText, FileX, CheckCircle, Search } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -42,6 +42,7 @@ const AddPaper: React.FC = () => {
   const [showOnlyWithPDF, setShowOnlyWithPDF] = useState(false);
   const [existingDois, setExistingDois] = useState<string[]>([]);
   const [hideAlreadyImported, setHideAlreadyImported] = useState(true);
+  const [searchingPdfFor, setSearchingPdfFor] = useState<string | null>(null);
 
   useEffect(() => {
     loadTags();
@@ -176,6 +177,27 @@ const AddPaper: React.FC = () => {
       item.data.tags?.forEach(t => tagsSet.add(t.tag));
     });
     return Array.from(tagsSet).sort();
+  };
+
+  const handleFindPdf = async (itemKey: string) => {
+    try {
+      setSearchingPdfFor(itemKey);
+      showSuccess('Recherche du PDF en cours...');
+
+      const result = await zoteroService.findPdf(itemKey);
+
+      if (result.success) {
+        showSuccess(`PDF trouvé sur ${result.source}!`);
+        // Recharger les items pour mettre à jour l'icône PDF
+        await loadZoteroItems();
+      } else {
+        showError('PDF non trouvé sur les sources disponibles');
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erreur lors de la recherche du PDF');
+    } finally {
+      setSearchingPdfFor(null);
+    }
   };
 
   const handleImportFromZotero = async () => {
@@ -1548,11 +1570,28 @@ const AddPaper: React.FC = () => {
                                     {isItemAlreadyImported(item) && (
                                       <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" title="Déjà importé" />
                                     )}
-                                    {/* Icône PDF */}
+                                    {/* Icône PDF et bouton recherche */}
                                     {itemHasPDF(item) ? (
                                       <FileText className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" title="PDF disponible" />
                                     ) : (
-                                      <FileX className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" title="Pas de PDF" />
+                                      <div className="flex items-center gap-1">
+                                        <FileX className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" title="Pas de PDF" />
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleFindPdf(item.key);
+                                          }}
+                                          disabled={searchingPdfFor === item.key}
+                                          className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900 rounded transition-colors disabled:opacity-50"
+                                          title="Chercher le PDF"
+                                        >
+                                          {searchingPdfFor === item.key ? (
+                                            <Loader2 className="w-3 h-3 text-blue-600 dark:text-blue-400 animate-spin" />
+                                          ) : (
+                                            <Search className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                          )}
+                                        </button>
+                                      </div>
                                     )}
                                     <div className="flex-1 min-w-0 flex items-center gap-2">
                                       <h4 className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate flex-1">
