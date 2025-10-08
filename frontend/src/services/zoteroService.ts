@@ -192,6 +192,21 @@ export const zoteroService = {
   },
 
   /**
+   * Récupérer les DOIs des articles déjà importés
+   */
+  async getExistingDois(): Promise<string[]> {
+    try {
+      const response = await api.get<{ dois: string[] }>('/zotero/existing-dois');
+      return response.data.dois;
+    } catch (error) {
+      if (error.response) {
+        throw new Error(error.response.data.message || 'Erreur lors de la récupération des DOIs existants');
+      }
+      throw new Error(error instanceof Error ? error.message : 'Erreur lors de la récupération des DOIs existants');
+    }
+  },
+
+  /**
    * Importer des items sélectionnés depuis Zotero
    */
   async importItems(itemKeys: string[]): Promise<ZoteroImportResult> {

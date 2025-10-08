@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Upload, Link, Loader2, Plus, X, BookMarked, FileText, FileX } from 'lucide-react';
+import { ArrowLeft, Upload, Link, Loader2, Plus, X, BookMarked, FileText, FileX, CheckCircle } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -40,6 +40,8 @@ const AddPaper: React.FC = () => {
   const [selectedZoteroCollection, setSelectedZoteroCollection] = useState<string>('');
   const [selectedZoteroTag, setSelectedZoteroTag] = useState<string>('');
   const [showOnlyWithPDF, setShowOnlyWithPDF] = useState(false);
+  const [existingDois, setExistingDois] = useState<string[]>([]);
+  const [hideAlreadyImported, setHideAlreadyImported] = useState(true);
 
   useEffect(() => {
     loadTags();
@@ -75,9 +77,13 @@ const AddPaper: React.FC = () => {
   const loadZoteroItems = async () => {
     try {
       setIsLoadingZotero(true);
-      // Charger tous les items sans limite
-      const result = await zoteroService.fetchItems({ limit: 10000 });
+      // Charger les DOIs existants et les items Zotero en parallèle
+      const [result, dois] = await Promise.all([
+        zoteroService.fetchItems({ limit: 10000 }),
+        zoteroService.getExistingDois()
+      ]);
       setZoteroItems(result.items);
+      setExistingDois(dois);
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Erreur lors du chargement des items Zotero');
     } finally {
@@ -115,6 +121,13 @@ const AddPaper: React.FC = () => {
     return false;
   };
 
+  // Vérifier si un article est déjà importé
+  const isItemAlreadyImported = (item: ZoteroItem) => {
+    if (!item.data.DOI) return false;
+    const doi = item.data.DOI.toLowerCase().trim();
+    return existingDois.includes(doi);
+  };
+
   // Filtrer les items Zotero
   const getFilteredZoteroItems = () => {
     return zoteroItems.filter(item => {
@@ -144,6 +157,11 @@ const AddPaper: React.FC = () => {
 
       // Filtre par présence de PDF
       if (showOnlyWithPDF && !itemHasPDF(item)) {
+        return false;
+      }
+
+      // Filtre pour cacher les articles déjà importés
+      if (hideAlreadyImported && isItemAlreadyImported(item)) {
         return false;
       }
 
@@ -1435,14 +1453,26 @@ const AddPaper: React.FC = () => {
                               <span className="text-gray-700 dark:text-gray-300">Avec PDF</span>
                             </label>
 
+                            {/* Checkbox cacher déjà importés */}
+                            <label className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
+                              <input
+                                type="checkbox"
+                                checked={hideAlreadyImported}
+                                onChange={(e) => setHideAlreadyImported(e.target.checked)}
+                                className="rounded"
+                              />
+                              <span className="text-gray-700 dark:text-gray-300">Cacher déjà importés</span>
+                            </label>
+
                             {/* Bouton réinitialiser */}
-                            {(zoteroSearchQuery || selectedZoteroCollection || selectedZoteroTag || showOnlyWithPDF) && (
+                            {(zoteroSearchQuery || selectedZoteroCollection || selectedZoteroTag || showOnlyWithPDF || !hideAlreadyImported) && (
                               <button
                                 onClick={() => {
                                   setZoteroSearchQuery('');
                                   setSelectedZoteroCollection('');
                                   setSelectedZoteroTag('');
                                   setShowOnlyWithPDF(false);
+                                  setHideAlreadyImported(true);
                                 }}
                                 className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                               >
@@ -1507,9 +1537,17 @@ const AddPaper: React.FC = () => {
                                     <input
                                       type="checkbox"
                                       checked={isSelected}
-                                      onChange={() => handleZoteroItemToggle(item.key)}
+                                      onChange={(e) => {
+                                        e.stopPropagation();
+                                        handleZoteroItemToggle(item.key);
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
                                       className="flex-shrink-0"
                                     />
+                                    {/* Icône déjà importé */}
+                                    {isItemAlreadyImported(item) && (
+                                      <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" title="Déjà importé" />
+                                    )}
                                     {/* Icône PDF */}
                                     {itemHasPDF(item) ? (
                                       <FileText className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" title="PDF disponible" />

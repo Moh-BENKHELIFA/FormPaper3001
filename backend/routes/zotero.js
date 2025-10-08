@@ -138,6 +138,24 @@ router.get('/zotero/items', async (req, res) => {
 });
 
 /**
+ * Récupérer les DOIs des articles déjà importés
+ * GET /api/zotero/existing-dois
+ */
+router.get('/zotero/existing-dois', async (req, res) => {
+  try {
+    const papers = await db.all('SELECT doi FROM papers WHERE doi IS NOT NULL AND doi != ""');
+    const dois = papers.map(p => p.doi.toLowerCase().trim());
+    res.json({ dois });
+  } catch (error) {
+    console.error('Error fetching existing DOIs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des DOIs existants',
+    });
+  }
+});
+
+/**
  * Récupérer les collections depuis Zotero
  * GET /api/zotero/collections
  */
