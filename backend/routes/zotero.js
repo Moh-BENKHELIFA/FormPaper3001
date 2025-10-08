@@ -249,6 +249,53 @@ router.post('/zotero/import', async (req, res) => {
           }
         }
 
+        // Créer le dossier de l'article et télécharger le PDF si disponible
+        let folderPath = null;
+        try {
+          // Nettoyer le titre pour créer le nom du dossier
+          let cleanTitle = paper.title
+            .replace(/[^\w\s-]/g, '') // Supprimer les caractères spéciaux
+            .replace(/\s+/g, '_') // Remplacer les espaces par des underscores
+            .toLowerCase();
+
+          if (cleanTitle.length > 50) {
+            cleanTitle = cleanTitle.substring(0, 50);
+          }
+
+          folderPath = `${cleanTitle}_${paperId}`;
+          const paperFolderPath = path.join(__dirname, '..', 'MyPapers', folderPath);
+
+          // Créer le dossier de l'article
+          await fs.mkdir(paperFolderPath, { recursive: true });
+          console.log(`✅ Created folder for paper ${paperId}: ${paperFolderPath}`);
+
+          // Mettre à jour le paper avec le folder_path
+          await db.run(
+            'UPDATE papers SET folder_path = ? WHERE id = ?',
+            [folderPath, paperId]
+          );
+
+          // Télécharger le PDF si disponible
+          const children = await zoteroService.getItemChildren(item.key);
+          const pdfAttachment = children.find(child =>
+            child.data.itemType === 'attachment' &&
+            child.data.contentType === 'application/pdf'
+          );
+
+          if (pdfAttachment) {
+            const pdfData = await zoteroService.downloadFile(pdfAttachment.key);
+            const pdfFileName = `${cleanTitle}_${paperId}.pdf`;
+            const pdfFilePath = path.join(paperFolderPath, pdfFileName);
+
+            // Sauvegarder le PDF dans le dossier de l'article
+            await fs.writeFile(pdfFilePath, pdfData);
+            console.log(`✅ PDF downloaded and saved: ${pdfFilePath}`);
+          }
+        } catch (pdfError) {
+          console.error(`Error creating folder or downloading PDF for ${item.key}:`, pdfError);
+          // Ne pas bloquer l'import si le PDF échoue
+        }
+
         imported.push({
           id: paperId,
           zotero_key: item.key,

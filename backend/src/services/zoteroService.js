@@ -234,6 +234,35 @@ class ZoteroService {
   }
 
   /**
+   * Récupérer les enfants (attachments) d'un item
+   */
+  async getItemChildren(itemKey) {
+    try {
+      const config = await this.getConfig();
+      if (!config || !config.api_key_full) {
+        throw new Error('Configuration Zotero non trouvée');
+      }
+
+      const response = await axios.get(
+        `${ZOTERO_API_BASE}/users/${config.user_id}/items/${itemKey}/children`,
+        {
+          headers: {
+            'Zotero-API-Key': config.api_key_full,
+          },
+          params: {
+            format: 'json',
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching item children:', error);
+      return [];
+    }
+  }
+
+  /**
    * Télécharger un fichier PDF depuis Zotero
    */
   async downloadFile(itemKey) {

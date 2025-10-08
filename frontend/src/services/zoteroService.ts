@@ -24,6 +24,9 @@ export interface ZoteroItem {
     id: number;
     name: string;
   };
+  meta?: {
+    numChildren?: number;
+  };
   data: {
     key: string;
     version: number;
@@ -45,6 +48,7 @@ export interface ZoteroItem {
     url?: string;
     journalAbbreviation?: string;
     tags?: Array<{ tag: string }>;
+    collections?: string[];
   };
 }
 

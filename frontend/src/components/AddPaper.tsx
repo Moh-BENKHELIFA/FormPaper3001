@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Upload, Link, Loader2, Plus, X, BookMarked } from 'lucide-react';
+import { ArrowLeft, Upload, Link, Loader2, Plus, X, BookMarked, FileText, FileX } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -102,6 +102,19 @@ const AddPaper: React.FC = () => {
     );
   };
 
+  // Vérifier si un item a un PDF attaché
+  const itemHasPDF = (item: ZoteroItem) => {
+    // Vérifier si l'item a des numChildren > 0 (indique des attachments)
+    if (item.meta && item.meta.numChildren && item.meta.numChildren > 0) {
+      return true;
+    }
+    // Alternative: vérifier si l'URL est un lien vers un fichier PDF
+    if (item.data.url && item.data.url.toLowerCase().endsWith('.pdf')) {
+      return true;
+    }
+    return false;
+  };
+
   // Filtrer les items Zotero
   const getFilteredZoteroItems = () => {
     return zoteroItems.filter(item => {
@@ -126,6 +139,11 @@ const AddPaper: React.FC = () => {
 
       // Filtre par tag
       if (selectedZoteroTag && !item.data.tags?.some(t => t.tag === selectedZoteroTag)) {
+        return false;
+      }
+
+      // Filtre par présence de PDF
+      if (showOnlyWithPDF && !itemHasPDF(item)) {
         return false;
       }
 
@@ -1406,13 +1424,25 @@ const AddPaper: React.FC = () => {
                               ))}
                             </select>
 
+                            {/* Checkbox PDF uniquement */}
+                            <label className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
+                              <input
+                                type="checkbox"
+                                checked={showOnlyWithPDF}
+                                onChange={(e) => setShowOnlyWithPDF(e.target.checked)}
+                                className="rounded"
+                              />
+                              <span className="text-gray-700 dark:text-gray-300">Avec PDF</span>
+                            </label>
+
                             {/* Bouton réinitialiser */}
-                            {(zoteroSearchQuery || selectedZoteroCollection || selectedZoteroTag) && (
+                            {(zoteroSearchQuery || selectedZoteroCollection || selectedZoteroTag || showOnlyWithPDF) && (
                               <button
                                 onClick={() => {
                                   setZoteroSearchQuery('');
                                   setSelectedZoteroCollection('');
                                   setSelectedZoteroTag('');
+                                  setShowOnlyWithPDF(false);
                                 }}
                                 className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                               >
@@ -1480,6 +1510,12 @@ const AddPaper: React.FC = () => {
                                       onChange={() => handleZoteroItemToggle(item.key)}
                                       className="flex-shrink-0"
                                     />
+                                    {/* Icône PDF */}
+                                    {itemHasPDF(item) ? (
+                                      <FileText className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" title="PDF disponible" />
+                                    ) : (
+                                      <FileX className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" title="Pas de PDF" />
+                                    )}
                                     <div className="flex-1 min-w-0 flex items-center gap-2">
                                       <h4 className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate flex-1">
                                         {item.data.title || 'Sans titre'}
