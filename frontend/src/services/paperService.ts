@@ -84,6 +84,14 @@ export const paperService = {
     return response.data.data;
   },
 
+  async fetchDOIMetadataWithPDF(doi: string): Promise<{ metadata: DOIMetadata; pdf: { found: boolean; source?: string; tempId?: string }; extractedImages: any[] }> {
+    const response = await api.get<APIResponse<{ metadata: DOIMetadata; pdf: { found: boolean; source?: string; tempId?: string }; extractedImages: any[] }>>(`/papers/doi-with-pdf/${encodeURIComponent(doi)}`);
+    if (!response.data.data) {
+      throw new Error(response.data.error || 'Failed to fetch DOI with PDF');
+    }
+    return response.data.data;
+  },
+
   async checkDoiExists(doi: string): Promise<boolean> {
     try {
       const response = await api.get<APIResponse<{ exists: boolean; doi: string }>>(`/papers/check-doi/${encodeURIComponent(doi)}`);
@@ -271,6 +279,24 @@ export const paperService = {
 
     if (!response.data.data) {
       throw new Error(response.data.error || 'Failed to save PDF assets');
+    }
+    return response.data.data;
+  },
+
+  async saveDoiPdfAssets(paperId: number, data: {
+    tempId: string;
+    pdfPath: string;
+    selectedImages: string[];
+    coverImagePath?: string;
+  }): Promise<{ pdfPath: string; savedImages: any[]; coverImage?: string }> {
+    const response = await api.post<APIResponse<{
+      pdfPath: string;
+      savedImages: any[];
+      coverImage?: string;
+    }>>(`/papers/${paperId}/save-doi-pdf-assets`, data);
+
+    if (!response.data.data) {
+      throw new Error(response.data.error || 'Failed to save DOI PDF assets');
     }
     return response.data.data;
   },

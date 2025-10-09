@@ -29,6 +29,9 @@ const AddPaper: React.FC = () => {
   const [extractedImages, setExtractedImages] = useState<string[]>([]);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [selectedCoverFromExtracted, setSelectedCoverFromExtracted] = useState<string | null>(null);
+  const [pdfFoundSource, setPdfFoundSource] = useState<string | null>(null);
+  const [doiPdfTempId, setDoiPdfTempId] = useState<string | null>(null);
+  const [doiPdfPath, setDoiPdfPath] = useState<string | null>(null);
 
   // Zotero states
   const [zoteroItems, setZoteroItems] = useState<ZoteroItem[]>([]);
@@ -435,7 +438,7 @@ const AddPaper: React.FC = () => {
       // Créer l'article
       const newPaper = await paperService.createPaper(paperData);
 
-      // Si nous avons un PDF à sauvegarder avec des images extraites
+      // Si nous avons un PDF à sauvegarder avec des images extraites (depuis upload PDF)
       if (pdfMetadata?.filePath && (selectedImages.length > 0 || selectedCoverFromExtracted)) {
         try {
           const savePdfData = {
@@ -447,6 +450,23 @@ const AddPaper: React.FC = () => {
           console.log('PDF et images sauvegardés avec succès');
         } catch (pdfError) {
           console.error('Erreur lors de la sauvegarde du PDF et des images:', pdfError);
+          // Continue même si la sauvegarde échoue
+        }
+      }
+
+      // Si nous avons un PDF trouvé via DOI avec des images/cover
+      if (doiPdfTempId && doiPdfPath) {
+        try {
+          const saveDoiData = {
+            tempId: doiPdfTempId,
+            pdfPath: doiPdfPath,
+            selectedImages: selectedImages,
+            coverImagePath: selectedCoverFromExtracted || undefined
+          };
+          await paperService.saveDoiPdfAssets(newPaper.id, saveDoiData);
+          console.log('PDF DOI et images sauvegardés avec succès');
+        } catch (pdfError) {
+          console.error('Erreur lors de la sauvegarde du PDF DOI et des images:', pdfError);
           // Continue même si la sauvegarde échoue
         }
       }
@@ -494,10 +514,32 @@ const AddPaper: React.FC = () => {
         return;
       }
 
-      // Si le DOI n'existe pas, récupérer les métadonnées
-      const result = await paperService.fetchDOIMetadata(doi.trim());
-      setMetadata(result);
-      showSuccess('Métadonnées récupérées avec succès');
+      // Récupérer les métadonnées + chercher le PDF automatiquement
+      showSuccess('Recherche des métadonnées et du PDF...');
+      const result = await paperService.fetchDOIMetadataWithPDF(doi.trim());
+
+      setMetadata(result.metadata);
+
+      // Si un PDF a été trouvé et des images extraites
+      if (result.pdf.found) {
+        setPdfFoundSource(result.pdf.source || null);
+        setDoiPdfTempId(result.pdf.tempId || null);
+        setDoiPdfPath(result.pdf.tempPath || null);
+        if (result.extractedImages.length > 0) {
+          const imageUrls = result.extractedImages.map((img: any) => img.url);
+          console.log('🖼️ Images URLs from backend:', imageUrls);
+          setExtractedImages(imageUrls);
+          showSuccess(`Métadonnées récupérées ! PDF trouvé sur ${result.pdf.source} - ${result.extractedImages.length} images extraites`);
+        } else {
+          showSuccess(`Métadonnées récupérées ! PDF trouvé sur ${result.pdf.source}`);
+        }
+      } else {
+        setPdfFoundSource(null);
+        setDoiPdfTempId(null);
+        setDoiPdfPath(null);
+        setExtractedImages([]);
+        showSuccess('Métadonnées récupérées (PDF non trouvé)');
+      }
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Erreur lors de la récupération des métadonnées');
     } finally {
@@ -737,6 +779,115 @@ const AddPaper: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Section Statut PDF trouvé */}
+                    {pdfFoundSource && (
+                      <div className="mt-6 pt-4 border-t border-green-200 dark:border-gray-600">
+                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            <div>
+                              <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                                PDF trouvé automatiquement
+                              </p>
+                              <p className="text-xs text-blue-600 dark:text-blue-400">
+                                Source : {pdfFoundSource}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Section Images extraites du PDF */}
+                    {extractedImages.length > 0 && (
+                      <div className="mt-6 pt-4 border-t border-green-200 dark:border-gray-600">
+                        <h5 className="text-md font-medium text-green-800 dark:text-green-400 mb-3">
+                          Images extraites du PDF ({extractedImages.length})
+                        </h5>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                          Sélectionnez les images que vous souhaitez sauvegarder et choisissez une image de couverture.
+                        </p>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                          {extractedImages.map((imagePath, index) => (
+                            <div key={index} className="relative group">
+                              <div
+                                className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border-2 transition-all duration-200 cursor-pointer transform hover:scale-105 hover:shadow-lg"
+                                style={{
+                                  borderColor: selectedImages.includes(imagePath) ? '#3B82F6' : '#E5E7EB',
+                                  boxShadow: selectedImages.includes(imagePath) ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none'
+                                }}
+                                onClick={() => {
+                                  if (selectedImages.includes(imagePath)) {
+                                    setSelectedImages(selectedImages.filter(img => img !== imagePath));
+                                    if (selectedCoverFromExtracted === imagePath) {
+                                      setSelectedCoverFromExtracted(null);
+                                      setCoverImagePreview(null);
+                                    }
+                                  } else {
+                                    setSelectedImages([...selectedImages, imagePath]);
+                                  }
+                                }}
+                              >
+                                <img
+                                  src={imagePath.startsWith('/') ? imagePath : `/${imagePath}`}
+                                  alt={`Image extraite ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+
+                                <div className={`absolute inset-0 transition-all duration-200 ${
+                                  selectedImages.includes(imagePath)
+                                    ? 'bg-blue-500 bg-opacity-20'
+                                    : 'bg-black bg-opacity-0 hover:bg-opacity-10'
+                                }`}>
+                                  {selectedImages.includes(imagePath) && (
+                                    <div className="absolute bottom-2 left-2 right-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedCoverFromExtracted(imagePath);
+                                          setCoverImagePreview(imagePath);
+                                          setCoverImage(null);
+                                        }}
+                                        className={`w-full px-2 py-1 text-xs rounded-md font-medium transition-colors ${
+                                          selectedCoverFromExtracted === imagePath
+                                            ? 'bg-green-600 text-white'
+                                            : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm'
+                                        }`}
+                                      >
+                                        {selectedCoverFromExtracted === imagePath ? '⭐ Couverture' : 'Définir comme couverture'}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="absolute top-2 left-2 space-y-1">
+                                {selectedImages.includes(imagePath) && (
+                                  <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </div>
+                                )}
+                                {selectedCoverFromExtracted === imagePath && (
+                                  <div className="w-7 h-7 bg-green-600 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                                    <span className="text-white text-lg leading-none">⭐</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="absolute top-2 right-2">
+                                <div className="bg-white dark:bg-gray-800 px-2 py-1 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 shadow-sm">
+                                  Image {index + 1}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Section Image de couverture */}
                     <div className="mt-6 pt-4 border-t border-green-200 dark:border-gray-600">
                       <h5 className="text-md font-medium text-green-800 dark:text-green-400 mb-3">Image de couverture (optionnel)</h5>
@@ -745,7 +896,7 @@ const AddPaper: React.FC = () => {
                         <div className="flex items-start space-x-4">
                           <div className="w-32 h-40 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border dark:border-gray-600 shadow-sm">
                             <img
-                              src={selectedCoverFromExtracted ? `/${selectedCoverFromExtracted}` : coverImagePreview}
+                              src={selectedCoverFromExtracted ? (selectedCoverFromExtracted.startsWith('/') ? selectedCoverFromExtracted : `/${selectedCoverFromExtracted}`) : coverImagePreview}
                               alt="Aperçu de la couverture"
                               className="w-full h-full object-cover"
                             />
@@ -1241,7 +1392,7 @@ const AddPaper: React.FC = () => {
                         <div className="flex items-start space-x-4">
                           <div className="w-32 h-40 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border dark:border-gray-600 shadow-sm">
                             <img
-                              src={selectedCoverFromExtracted ? `/${selectedCoverFromExtracted}` : coverImagePreview}
+                              src={selectedCoverFromExtracted ? (selectedCoverFromExtracted.startsWith('/') ? selectedCoverFromExtracted : `/${selectedCoverFromExtracted}`) : coverImagePreview}
                               alt="Aperçu de la couverture"
                               className="w-full h-full object-cover"
                             />

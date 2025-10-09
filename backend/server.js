@@ -13,6 +13,7 @@ const imageUploadRoutes = require('./routes/imageUpload');
 const notesStorageRoutes = require('./routes/notesStorage');
 const aiRoutes = require('./routes/aiRoutes');
 const zoteroRoutes = require('./routes/zotero');
+const pdfFinderService = require('./src/services/pdfFinderService');
 
 const app = express();
 const PORT = process.env.PORT || 5004;
@@ -154,6 +155,113 @@ app.get('/api/papers/doi/:doi', async (req, res) => {
   } catch (error) {
     console.error('Error fetching DOI metadata:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch DOI metadata' });
+  }
+});
+
+// Nouveau endpoint : récupérer métadonnées DOI + chercher et extraire PDF et images
+app.get('/api/papers/doi-with-pdf/:doi', async (req, res) => {
+  try {
+    const doi = decodeURIComponent(req.params.doi);
+    console.log(`🔍 Fetching DOI metadata and searching PDF for: ${doi}`);
+
+    // 1. Récupérer les métadonnées
+    const metadata = await fetchDOIMetadata(doi);
+
+    // 2. Chercher le PDF
+    const mockItem = {
+      data: {
+        DOI: doi,
+        title: metadata.title,
+        url: metadata.url
+      }
+    };
+
+    const findResult = await pdfFinderService.findPdf(mockItem);
+
+    let pdfPath = null;
+    let extractedImages = [];
+
+    if (findResult.success) {
+      console.log(`✅ PDF found on ${findResult.source}, downloading...`);
+
+      // 3. Télécharger le PDF dans un dossier temporaire
+      const pdfData = await pdfFinderService.downloadPdf(findResult.pdfUrl);
+
+      // Créer un dossier temporaire unique
+      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const tempDir = path.join(__dirname, 'uploads', 'temp_doi', tempId);
+      await fs.ensureDir(tempDir);
+
+      pdfPath = path.join(tempDir, 'paper.pdf');
+      await fs.writeFile(pdfPath, pdfData);
+      console.log(`✅ PDF downloaded to: ${pdfPath}`);
+
+      // 4. Extraire les images du PDF
+      try {
+        const pythonScript = path.join(__dirname, 'scripts', 'extract_images.py');
+        const extractDir = path.join(tempDir, 'extracted_images');
+        await fs.ensureDir(extractDir);
+
+        extractedImages = await new Promise((resolve, reject) => {
+          const python = spawn('python', [pythonScript, pdfPath, extractDir]);
+          let result = '';
+          let error = '';
+
+          python.stdout.on('data', (data) => { result += data.toString(); });
+          python.stderr.on('data', (data) => { error += data.toString(); });
+
+          python.on('close', (code) => {
+            if (code === 0 && result.trim()) {
+              try {
+                const images = JSON.parse(result);
+                // Convertir les chemins en chemins relatifs accessibles via HTTP
+                const imagesWithUrls = images.map(img => ({
+                  ...img,
+                  url: `/uploads/temp_doi/${tempId}/extracted_images/${path.basename(img.filename)}`
+                }));
+                resolve(imagesWithUrls);
+              } catch (e) {
+                console.error('Error parsing extracted images:', e);
+                resolve([]);
+              }
+            } else {
+              console.error('Python extraction error:', error);
+              resolve([]);
+            }
+          });
+        });
+
+        console.log(`✅ Extracted ${extractedImages.length} images from PDF`);
+        console.log('📸 Sample image URLs:', extractedImages.slice(0, 3).map(img => img.url));
+      } catch (extractError) {
+        console.error('Error extracting images:', extractError);
+        // Ne pas bloquer si l'extraction échoue
+      }
+    } else {
+      console.log(`❌ No PDF found for DOI: ${doi}`);
+    }
+
+    console.log('🚀 Sending response with', extractedImages.length, 'images');
+
+    res.json({
+      success: true,
+      data: {
+        metadata,
+        pdf: findResult.success ? {
+          found: true,
+          source: findResult.source,
+          tempPath: pdfPath,
+          tempId: path.basename(path.dirname(pdfPath))
+        } : {
+          found: false
+        },
+        extractedImages
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching DOI with PDF:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch DOI with PDF' });
   }
 });
 
@@ -622,6 +730,122 @@ app.post('/api/papers/:id/save-pdf-assets', async (req, res) => {
   } catch (error) {
     console.error('Error saving PDF assets:', error);
     res.status(500).json({ success: false, error: 'Failed to save PDF assets' });
+  }
+});
+
+// Endpoint pour sauvegarder les assets DOI (PDF + images du dossier temp_doi)
+app.post('/api/papers/:id/save-doi-pdf-assets', async (req, res) => {
+  try {
+    const paperId = req.params.id;
+    const { tempId, pdfPath, selectedImages, coverImagePath } = req.body;
+
+    console.log(`📦 Sauvegarde des assets DOI pour le papier ${paperId}:`, { tempId, pdfPath, selectedImagesCount: selectedImages?.length });
+
+    // Récupérer les infos du papier
+    const paper = await database.getPaper(paperId);
+    if (!paper) {
+      return res.status(404).json({ success: false, error: 'Paper not found' });
+    }
+
+    // Créer le dossier pour l'article s'il n'en a pas
+    let folderPath = paper.folder_path;
+    if (!folderPath) {
+      let cleanTitle = paper.title
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '_')
+        .toLowerCase();
+
+      if (cleanTitle.length > 50) {
+        cleanTitle = cleanTitle.substring(0, 50);
+      }
+
+      folderPath = `${cleanTitle}_${paperId}`;
+      await database.updatePaper(paperId, { ...paper, folder_path: folderPath });
+    }
+
+    const paperFolderPath = path.join(__dirname, 'MyPapers', folderPath);
+    await fs.ensureDir(paperFolderPath);
+
+    // Copier le PDF depuis le dossier temporaire
+    const cleanTitleForPdf = folderPath.replace(`_${paperId}`, '');
+    const pdfFileName = `${cleanTitleForPdf}_${paperId}.pdf`;
+    const finalPdfPath = path.join(paperFolderPath, pdfFileName);
+
+    if (await fs.pathExists(pdfPath)) {
+      await fs.copyFile(pdfPath, finalPdfPath);
+      console.log(`✅ PDF DOI sauvegardé: ${finalPdfPath}`);
+    } else {
+      console.warn(`⚠️ PDF source non trouvé: ${pdfPath}`);
+    }
+
+    // Copier les images sélectionnées depuis le dossier temp_doi
+    let savedImagesInfo = [];
+    if (selectedImages && selectedImages.length > 0) {
+      const savedImagesDir = path.join(paperFolderPath, 'saved_images');
+      await fs.ensureDir(savedImagesDir);
+
+      for (const imageUrl of selectedImages) {
+        // Convertir l'URL en chemin absolu
+        // imageUrl est de la forme: /uploads/temp_doi/temp_XXX/extracted_images/image.png
+        const imagePath = path.join(__dirname, imageUrl.replace(/^\//, ''));
+
+        if (await fs.pathExists(imagePath)) {
+          const imageFileName = path.basename(imagePath);
+          const savedImagePath = path.join(savedImagesDir, imageFileName);
+          await fs.copyFile(imagePath, savedImagePath);
+          savedImagesInfo.push({
+            original: imageUrl,
+            saved: `MyPapers/${folderPath}/saved_images/${imageFileName}`
+          });
+          console.log(`✅ Image DOI sauvegardée: ${savedImagePath}`);
+        } else {
+          console.warn(`⚠️ Image source non trouvée: ${imagePath}`);
+        }
+      }
+    }
+
+    // Gérer l'image de couverture
+    let coverImageUrl = null;
+    if (coverImagePath) {
+      // Convertir l'URL en chemin absolu
+      const coverPath = path.join(__dirname, coverImagePath.replace(/^\//, ''));
+
+      if (await fs.pathExists(coverPath)) {
+        const coverFileName = `paper_Cover_${paperId}${path.extname(coverPath)}`;
+        const finalCoverPath = path.join(paperFolderPath, coverFileName);
+        await fs.copyFile(coverPath, finalCoverPath);
+        coverImageUrl = `MyPapers/${folderPath}/${coverFileName}`;
+
+        await database.updatePaper(paperId, { ...paper, image: coverImageUrl });
+        console.log(`✅ Image de couverture DOI sauvegardée: ${finalCoverPath}`);
+      } else {
+        console.warn(`⚠️ Image de couverture source non trouvée: ${coverPath}`);
+      }
+    }
+
+    // Nettoyer le dossier temporaire temp_doi
+    try {
+      const tempDir = path.join(__dirname, 'uploads', 'temp_doi', tempId);
+      if (await fs.pathExists(tempDir)) {
+        await fs.remove(tempDir);
+        console.log(`✅ Dossier temporaire DOI supprimé: ${tempDir}`);
+      }
+    } catch (cleanupError) {
+      console.warn('Warning: Could not clean up temporary DOI folder:', cleanupError);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        pdfPath: `MyPapers/${folderPath}/${pdfFileName}`,
+        savedImages: savedImagesInfo,
+        coverImage: coverImageUrl
+      }
+    });
+
+  } catch (error) {
+    console.error('Error saving DOI PDF assets:', error);
+    res.status(500).json({ success: false, error: 'Failed to save DOI PDF assets' });
   }
 });
 

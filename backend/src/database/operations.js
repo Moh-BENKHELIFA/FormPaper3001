@@ -158,6 +158,34 @@ class PaperOperations {
       await db.run('UPDATE papers SET folder_path = ? WHERE id = ?', [folderName, paperId]);
 
       console.log(`✅ Article créé avec dossier: ${folderName}`);
+
+      // Si l'image vient d'un dossier temporaire (DOI), la copier dans MyPapers
+      if (paperData.image && paperData.image.includes('/temp_doi/')) {
+        try {
+          const myPapersDir = path.join(__dirname, '../../MyPapers');
+          const paperFolderPath = path.join(myPapersDir, folderName);
+
+          // Chemin source de l'image temporaire
+          const tempImagePath = path.join(__dirname, '../..', paperData.image);
+
+          // Nouveau nom pour l'image de couverture
+          const imageExtension = path.extname(tempImagePath);
+          const coverImageName = `paper_Cover_${paperId}${imageExtension}`;
+          const coverImagePath = path.join(paperFolderPath, coverImageName);
+
+          // Copier l'image
+          await fs.copy(tempImagePath, coverImagePath);
+
+          // Mettre à jour le chemin de l'image dans la base de données
+          const newImagePath = `MyPapers/${folderName}/${coverImageName}`;
+          await db.run('UPDATE papers SET image = ? WHERE id = ?', [newImagePath, paperId]);
+
+          console.log(`✅ Image de couverture copiée depuis dossier temporaire: ${newImagePath}`);
+        } catch (imageError) {
+          console.error('❌ Erreur lors de la copie de l\'image:', imageError);
+          // Ne pas faire échouer la création si l'image ne peut pas être copiée
+        }
+      }
     } catch (folderError) {
       console.error('❌ Erreur lors de la création du dossier:', folderError);
       // L'article est créé même si le dossier échoue
