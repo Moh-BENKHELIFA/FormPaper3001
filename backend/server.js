@@ -276,6 +276,61 @@ app.get('/api/papers/check-doi/:doi', async (req, res) => {
   }
 });
 
+// Quick add endpoint for browser extension
+app.post('/api/papers/quick-add', async (req, res) => {
+  try {
+    const { doi, tags, reading_status, is_favorite } = req.body;
+
+    console.log('📚 Quick-add request from extension:', { doi, tags, reading_status, is_favorite });
+
+    if (!doi) {
+      return res.status(400).json({ success: false, error: 'DOI is required' });
+    }
+
+    // Vérifier si existe déjà
+    const exists = await database.checkDoiExists(doi);
+    if (exists) {
+      return res.status(409).json({ success: false, error: 'Un article avec ce DOI existe déjà dans votre bibliothèque' });
+    }
+
+    // Récupérer les métadonnées
+    const metadata = await fetchDOIMetadata(doi);
+
+    // Construire les données du papier
+    const paperData = {
+      title: metadata.title,
+      authors: metadata.authors,
+      publication_date: metadata.month
+        ? `${metadata.year}-${metadata.month.toString().padStart(2, '0')}-01`
+        : `${metadata.year}-01-01`,
+      conference: metadata.journal,
+      conference_short: metadata.journal_short || '',
+      reading_status: reading_status || 'unread',
+      is_favorite: is_favorite || 0,
+      year: metadata.year,
+      month: metadata.month,
+      doi: metadata.doi,
+      url: metadata.url || '',
+      categories: [],
+      tags: tags || []
+    };
+
+    // Créer l'article
+    const newPaper = await database.createPaper(paperData);
+
+    console.log('✅ Paper added from extension:', newPaper.id);
+
+    res.json({
+      success: true,
+      data: newPaper
+    });
+
+  } catch (error) {
+    console.error('❌ Error in quick-add:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to add paper' });
+  }
+});
+
 app.get('/api/papers/search', async (req, res) => {
   try {
     const { q } = req.query;
