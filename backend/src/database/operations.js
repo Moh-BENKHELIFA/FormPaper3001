@@ -231,6 +231,21 @@ class PaperOperations {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
+    // Récupérer le paper existant pour préserver les champs non fournis
+    const existingPaper = await this.getPaper(id);
+    if (!existingPaper) {
+      throw new Error('Paper not found');
+    }
+
+    // Merger les données existantes avec les nouvelles données
+    // Les nouvelles données écrasent les anciennes, mais on préserve les champs non fournis
+    const mergedData = {
+      ...existingPaper,
+      ...paperData,
+      // S'assurer que folder_path n'est jamais écrasé par undefined
+      folder_path: paperData.folder_path !== undefined ? paperData.folder_path : existingPaper.folder_path
+    };
+
     const sql = `
       UPDATE papers
       SET title = ?, authors = ?, publication_date = ?, conference = ?, conference_short = ?,
@@ -240,20 +255,20 @@ class PaperOperations {
     `;
 
     const params = [
-      paperData.title,
-      paperData.authors,
-      paperData.publication_date,
-      paperData.conference,
-      paperData.conference_short,
-      paperData.reading_status,
-      paperData.is_favorite,
-      paperData.year,
-      paperData.month,
-      paperData.abstract,
-      paperData.image,
-      paperData.doi,
-      paperData.url,
-      paperData.folder_path,
+      mergedData.title,
+      mergedData.authors,
+      mergedData.publication_date,
+      mergedData.conference,
+      mergedData.conference_short,
+      mergedData.reading_status,
+      mergedData.is_favorite,
+      mergedData.year,
+      mergedData.month,
+      mergedData.abstract,
+      mergedData.image,
+      mergedData.doi,
+      mergedData.url,
+      mergedData.folder_path,
       id
     ];
 

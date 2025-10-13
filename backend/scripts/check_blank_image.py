@@ -5,13 +5,21 @@ import sys
 from PIL import Image
 import numpy as np
 
-def is_blank_image(image_path, threshold=0.95):
+def is_blank_image(image_path, threshold=0.95, min_width=400, min_height=300):
     """
-    Vérifie si une image est blanche/uniforme
+    Vérifie si une image est blanche/uniforme ou trop petite (logo)
     threshold: pourcentage de pixels similaires pour considérer l'image comme blanche (0.95 = 95%)
+    min_width: largeur minimale pour une image de cover (évite les logos)
+    min_height: hauteur minimale pour une image de cover (évite les logos)
     """
     try:
         img = Image.open(image_path)
+
+        # Vérifier la taille de l'image (filtrer les logos qui sont souvent petits)
+        width, height = img.size
+        if width < min_width or height < min_height:
+            print(f"SMALL_LOGO:{width}x{height}")
+            return True
 
         # Convertir en niveaux de gris pour simplifier
         img_gray = img.convert('L')
@@ -37,7 +45,7 @@ def is_blank_image(image_path, threshold=0.95):
             print(f"BLANK:{white_ratio}")
             return True
 
-        print(f"OK:{variance}:{white_ratio}")
+        print(f"OK:{width}x{height}:{variance}:{white_ratio}")
         return False
 
     except Exception as e:

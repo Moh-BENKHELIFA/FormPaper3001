@@ -149,3 +149,4 @@ paperqa-service/*.pyc
 paperqa-service/.env
 paperqa-service/indexes/
 
+*.db
