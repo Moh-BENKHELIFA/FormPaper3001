@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Upload, Link, Loader2, Plus, X, Save, Settings, FileText, ExternalLink, Eye, Trash2, ZoomIn } from 'lucide-react';
+import { ArrowLeft, Upload, Link, Loader2, Plus, X, Save, Settings, FileText, ExternalLink, Eye, Trash2, ZoomIn, Image } from 'lucide-react';
 import { useNavigation } from '../hooks/useNavigation';
 import { useToast } from '../contexts/ToastContext';
 import { paperService } from '../services/paperService';
@@ -389,6 +389,17 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
     }
   };
 
+  const handleSetSavedImageAsCover = (imageUrl: string) => {
+    setCoverImagePreview(imageUrl);
+    handleInputChange('image', imageUrl.replace('/api/', ''));
+    showSuccess('Image définie comme couverture (pensez à enregistrer)');
+  };
+
+  const handleSetExtractedImageAsCover = (imagePath: string) => {
+    setCoverImagePreview(imagePath);
+    showSuccess('Image définie comme couverture (pensez à enregistrer et copier l\'image)');
+  };
+
   const handleToggleImageForDeletion = (filename: string) => {
     setImagesToDelete(prev => {
       const newSet = new Set(prev);
@@ -677,8 +688,19 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                                       window.open(image.url, '_blank');
                                     }}
                                     className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-600"
+                                    title="Agrandir"
                                   >
                                     <ZoomIn className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSetSavedImageAsCover(image.url);
+                                    }}
+                                    className="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-green-600"
+                                    title="Définir comme couverture"
+                                  >
+                                    <Image className="w-3 h-3" />
                                   </button>
                                   <button
                                     onClick={(e) => {
@@ -690,6 +712,7 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                                         ? 'bg-red-600 text-white opacity-100'
                                         : 'bg-red-500 text-white hover:bg-red-600'
                                     }`}
+                                    title={isMarkedForDeletion ? 'Annuler la suppression' : 'Marquer pour suppression'}
                                   >
                                     <Trash2 className="w-3 h-3" />
                                   </button>
@@ -768,23 +791,36 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                         <div className="grid grid-cols-3 gap-3 mb-4">
                           {extractedImages.map((imagePath, index) => {
                             const filename = imagePath.split('/').pop() || '';
+                            const isSelected = selectedExtractedImages.has(filename);
                             return (
                               <div key={index} className="relative group">
                                 <img
                                   src={imagePath}
                                   alt={`Nouvelle image ${index + 1}`}
                                   className={`w-full h-32 object-cover rounded border-2 cursor-pointer transition-all ${
-                                    selectedExtractedImages.has(filename)
+                                    isSelected
                                       ? 'border-green-500 ring-2 ring-green-200'
                                       : 'border-transparent hover:border-green-400'
                                   }`}
                                   onClick={() => handleToggleExtractedImage(imagePath)}
                                 />
-                                {selectedExtractedImages.has(filename) && (
-                                  <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">
-                                    ✓
-                                  </div>
-                                )}
+                                <div className="absolute top-2 right-2 flex gap-1">
+                                  {isSelected && (
+                                    <div className="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">
+                                      ✓
+                                    </div>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSetExtractedImageAsCover(imagePath);
+                                    }}
+                                    className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-600"
+                                    title="Définir comme couverture"
+                                  >
+                                    <Image className="w-3 h-3" />
+                                  </button>
+                                </div>
                                 <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-sm px-2 py-1 rounded">
                                   {index + 1}
                                 </div>
