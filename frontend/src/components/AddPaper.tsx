@@ -32,6 +32,7 @@ const AddPaper: React.FC = () => {
   const [pdfFoundSource, setPdfFoundSource] = useState<string | null>(null);
   const [doiPdfTempId, setDoiPdfTempId] = useState<string | null>(null);
   const [doiPdfPath, setDoiPdfPath] = useState<string | null>(null);
+  const [addToZotero, setAddToZotero] = useState<boolean>(true);
 
   // Zotero states
   const [zoteroItems, setZoteroItems] = useState<ZoteroItem[]>([]);
@@ -484,6 +485,27 @@ const AddPaper: React.FC = () => {
       // Associer les tags
       for (const tag of selectedTags) {
         await paperService.addTagToPaper(newPaper.id, tag.id);
+      }
+
+      // Ajouter à Zotero si demandé et si Zotero est configuré
+      if (addToZotero && zoteroConfigured && metadata) {
+        try {
+          const zoteroMetadata = {
+            doi: metadata.doi,
+            title: metadata.title,
+            authors: metadata.authors,
+            year: metadata.year,
+            journal: metadata.journal,
+            url: metadata.url,
+          };
+          await zoteroService.addItemFromMetadata(zoteroMetadata);
+          showSuccess('Article ajouté à FormPaper et à Zotero !');
+        } catch (zoteroError) {
+          console.error('Erreur lors de l\'ajout à Zotero:', zoteroError);
+          showError('Article ajouté à FormPaper, mais échec de l\'ajout à Zotero');
+        }
+      } else {
+        showSuccess('Article ajouté avec succès !');
       }
 
       // Rediriger vers l'accueil ou afficher un message de succès
@@ -1024,6 +1046,23 @@ const AddPaper: React.FC = () => {
                           </span>
                         </label>
                       </div>
+
+                      {/* Ajouter à Zotero */}
+                      {zoteroConfigured && (
+                        <div>
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={addToZotero}
+                              onChange={(e) => setAddToZotero(e.target.checked)}
+                              className="w-4 h-4 text-purple-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-purple-500 focus:ring-2"
+                            />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Ajouter également à Zotero
+                            </span>
+                          </label>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-green-200 dark:border-gray-600">
@@ -1520,6 +1559,23 @@ const AddPaper: React.FC = () => {
                           </span>
                         </label>
                       </div>
+
+                      {/* Ajouter à Zotero */}
+                      {zoteroConfigured && (
+                        <div>
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={addToZotero}
+                              onChange={(e) => setAddToZotero(e.target.checked)}
+                              className="w-4 h-4 text-purple-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-purple-500 focus:ring-2"
+                            />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Ajouter également à Zotero
+                            </span>
+                          </label>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-green-200 dark:border-gray-600">

@@ -561,4 +561,64 @@ router.post('/zotero/find-pdf', async (req, res) => {
   }
 });
 
+// Ajouter un item à Zotero depuis les métadonnées (DOI/PDF)
+router.post('/zotero/add-item', async (req, res) => {
+  try {
+    const { doi, title, authors, year, journal, url } = req.body;
+
+    console.log('📚 Ajout item à Zotero:', { doi, title });
+
+    if (!title) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le titre est requis',
+      });
+    }
+
+    // Récupérer la config Zotero
+    const config = await zoteroService.getConfig();
+    if (!config || !config.user_id || !config.api_key_full) {
+      return res.status(400).json({
+        success: false,
+        message: 'Zotero n\'est pas configuré',
+      });
+    }
+
+    // Créer l'objet item Zotero
+    const zoteroItem = {
+      itemType: 'journalArticle',
+      title: title,
+      creators: authors ? authors.split(',').map(a => ({
+        creatorType: 'author',
+        name: a.trim()
+      })) : [],
+      date: year ? year.toString() : '',
+      publicationTitle: journal || '',
+      DOI: doi || '',
+      url: url || '',
+    };
+
+    // Envoyer à Zotero
+    const result = await zoteroService.createItem(zoteroItem);
+
+    if (result.success) {
+      console.log('✅ Item ajouté à Zotero:', result.key);
+      res.json({
+        success: true,
+        zoteroKey: result.key,
+        message: 'Article ajouté à Zotero avec succès',
+      });
+    } else {
+      throw new Error(result.message || 'Échec de l\'ajout à Zotero');
+    }
+
+  } catch (error) {
+    console.error('❌ Error adding item to Zotero:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur lors de l\'ajout à Zotero',
+    });
+  }
+});
+
 module.exports = router;

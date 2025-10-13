@@ -290,6 +290,48 @@ class ZoteroService {
   }
 
   /**
+   * Créer un item dans Zotero
+   */
+  async createItem(itemData) {
+    try {
+      const config = await this.getConfig();
+      if (!config || !config.api_key_full) {
+        throw new Error('Configuration Zotero non trouvée');
+      }
+
+      const response = await axios.post(
+        `${ZOTERO_API_BASE}/users/${config.user_id}/items`,
+        [itemData],
+        {
+          headers: {
+            'Zotero-API-Key': config.api_key_full,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // L'API Zotero retourne un objet avec les clés créées
+      const createdKeys = response.data.successful;
+      if (createdKeys && Object.keys(createdKeys).length > 0) {
+        const firstKey = Object.keys(createdKeys)[0];
+        return {
+          success: true,
+          key: createdKeys[firstKey].key,
+          version: createdKeys[firstKey].version,
+        };
+      }
+
+      throw new Error('Aucune clé retournée par Zotero');
+    } catch (error) {
+      console.error('Error creating Zotero item:', error.response?.data || error.message);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Erreur lors de la création de l\'item',
+      };
+    }
+  }
+
+  /**
    * Mapper un item Zotero vers le format FormPaper
    */
   mapZoteroItemToPaper(item) {

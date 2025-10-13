@@ -240,4 +240,26 @@ export const zoteroService = {
       throw new Error(error instanceof Error ? error.message : 'Erreur lors de la recherche du PDF');
     }
   },
+
+  /**
+   * Ajouter un article à Zotero depuis les métadonnées DOI/PDF
+   */
+  async addItemFromMetadata(metadata: {
+    doi?: string;
+    title: string;
+    authors: string;
+    year: number;
+    journal?: string;
+    url?: string;
+  }): Promise<{ success: boolean; zoteroKey?: string; message: string }> {
+    try {
+      const response = await api.post<{ success: boolean; zoteroKey?: string; message: string }>('/zotero/add-item', metadata);
+      return response.data;
+    } catch (error) {
+      if (error.response) {
+        throw new Error(error.response.data.message || 'Erreur lors de l\'ajout à Zotero');
+      }
+      throw new Error(error instanceof Error ? error.message : 'Erreur lors de l\'ajout à Zotero');
+    }
+  },
 };
