@@ -678,10 +678,10 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                                   }`}
                                   onClick={() => handleToggleImageForDeletion(image.filename)}
                                 />
-                                <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-sm px-2 py-1 rounded">
+                                <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-sm px-2 py-1 rounded pointer-events-none">
                                   {index + 1}
                                 </div>
-                                <div className="absolute top-2 right-2 flex gap-1">
+                                <div className="absolute top-2 right-2 flex gap-1 z-20">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -697,7 +697,7 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                                       e.stopPropagation();
                                       handleSetSavedImageAsCover(image.url);
                                     }}
-                                    className="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-green-600"
+                                    className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-600"
                                     title="Définir comme couverture"
                                   >
                                     <Image className="w-3 h-3" />
@@ -707,10 +707,10 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                                       e.stopPropagation();
                                       handleToggleImageForDeletion(image.filename);
                                     }}
-                                    className={`rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-all ${
+                                    className={`rounded-full w-6 h-6 flex items-center justify-center text-sm transition-all ${
                                       isMarkedForDeletion
                                         ? 'bg-red-600 text-white opacity-100'
-                                        : 'bg-red-500 text-white hover:bg-red-600'
+                                        : 'bg-red-500 text-white opacity-0 group-hover:opacity-100 hover:bg-red-600'
                                     }`}
                                     title={isMarkedForDeletion ? 'Annuler la suppression' : 'Marquer pour suppression'}
                                   >
@@ -718,7 +718,10 @@ const ManagePaper: React.FC<ManagePaperProps> = ({ paperId }) => {
                                   </button>
                                 </div>
                                 {isMarkedForDeletion && (
-                                  <div className="absolute inset-0 bg-red-500 bg-opacity-20 rounded border-2 border-red-500 flex items-center justify-center">
+                                  <div
+                                    className="absolute inset-0 bg-red-500 bg-opacity-20 rounded border-2 border-red-500 flex items-center justify-center cursor-pointer pointer-events-none"
+                                    title="Cliquer pour annuler la suppression"
+                                  >
                                     <div className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center">
                                       <Trash2 className="w-4 h-4" />
                                     </div>
