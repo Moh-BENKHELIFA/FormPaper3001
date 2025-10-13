@@ -331,6 +331,147 @@ app.post('/api/papers/quick-add', async (req, res) => {
   }
 });
 
+// Quick add with PDF from browser extension
+app.post('/api/papers/quick-add-with-pdf', upload.single('pdf'), async (req, res) => {
+  try {
+    const { doi, tags, reading_status, is_favorite } = req.body;
+    const pdfFile = req.file;
+
+    console.log('📚 Quick-add with PDF from extension:', { doi, tags, reading_status, is_favorite, hasPdf: !!pdfFile });
+
+    if (!doi) {
+      return res.status(400).json({ success: false, error: 'DOI is required' });
+    }
+
+    if (!pdfFile) {
+      return res.status(400).json({ success: false, error: 'PDF file is required' });
+    }
+
+    // Vérifier si existe déjà
+    const exists = await database.checkDoiExists(doi);
+    if (exists) {
+      return res.status(409).json({ success: false, error: 'Un article avec ce DOI existe déjà dans votre bibliothèque' });
+    }
+
+    // Récupérer les métadonnées
+    const metadata = await fetchDOIMetadata(doi);
+
+    // Parser les tags si envoyés en JSON
+    let parsedTags = [];
+    if (tags) {
+      try {
+        parsedTags = JSON.parse(tags);
+      } catch (e) {
+        parsedTags = typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
+      }
+    }
+
+    // Construire les données du papier
+    const paperData = {
+      title: metadata.title,
+      authors: metadata.authors,
+      publication_date: metadata.month
+        ? `${metadata.year}-${metadata.month.toString().padStart(2, '0')}-01`
+        : `${metadata.year}-01-01`,
+      conference: metadata.journal,
+      conference_short: metadata.journal_short || '',
+      reading_status: reading_status || 'unread',
+      is_favorite: parseInt(is_favorite) || 0,
+      year: metadata.year,
+      month: metadata.month,
+      doi: metadata.doi,
+      url: metadata.url || '',
+      categories: [],
+      tags: parsedTags
+    };
+
+    // Créer l'article
+    const newPaper = await database.createPaper(paperData);
+    const paperId = newPaper.id;
+
+    console.log('✅ Paper created:', paperId);
+
+    // Sauvegarder le PDF dans le dossier du papier
+    const folderPath = newPaper.folder_path;
+    if (folderPath) {
+      const paperFolderPath = path.join(__dirname, 'MyPapers', folderPath);
+      await fs.ensureDir(paperFolderPath);
+
+      // Créer le nom du fichier PDF
+      const cleanTitle = folderPath.replace(`_${paperId}`, '');
+      const pdfFileName = `${cleanTitle}_${paperId}.pdf`;
+      const finalPdfPath = path.join(paperFolderPath, pdfFileName);
+
+      // Copier le PDF uploadé
+      await fs.copyFile(pdfFile.path, finalPdfPath);
+      console.log(`✅ PDF sauvegardé: ${finalPdfPath}`);
+
+      // Extraire les images du PDF pour la cover image
+      try {
+        console.log('📸 Extraction des images du PDF...');
+        const images = await extractImagesFromPDF(finalPdfPath);
+
+        if (images && images.images && images.images.length > 0) {
+          // Prendre la première image comme cover
+          const firstImagePath = images.images[0];
+          const firstImageFullPath = path.join(__dirname, firstImagePath);
+
+          if (await fs.pathExists(firstImageFullPath)) {
+            // Copier comme cover image
+            const coverImageName = `paper_Cover_${paperId}.png`;
+            const coverImagePath = path.join(paperFolderPath, coverImageName);
+
+            await fs.copyFile(firstImageFullPath, coverImagePath);
+            console.log(`✅ Cover image sauvegardée: ${coverImageName}`);
+
+            // Mettre à jour le chemin de l'image dans la base de données
+            const coverImageDbPath = `MyPapers/${folderPath}/${coverImageName}`;
+            await database.updatePaper(paperId, {
+              ...newPaper,
+              image: coverImageDbPath
+            });
+
+            // Nettoyer les images temporaires
+            const extractedImagesDir = path.join(__dirname, 'uploads', 'extracted_images');
+            await fs.remove(extractedImagesDir);
+            console.log('✅ Images temporaires nettoyées');
+          }
+        } else {
+          console.log('⚠️ Aucune image trouvée dans le PDF');
+        }
+      } catch (imageError) {
+        console.error('❌ Erreur lors de l\'extraction des images:', imageError);
+        // Ne pas faire échouer la création si l'extraction d'images échoue
+      }
+
+      // Supprimer le fichier temporaire du PDF
+      await fs.remove(pdfFile.path);
+    }
+
+    // Récupérer le papier mis à jour avec l'image
+    const updatedPaper = await database.getPaper(paperId);
+
+    res.json({
+      success: true,
+      data: updatedPaper
+    });
+
+  } catch (error) {
+    console.error('❌ Error in quick-add-with-pdf:', error);
+
+    // Nettoyer le fichier temporaire en cas d'erreur
+    if (req.file && req.file.path) {
+      try {
+        await fs.remove(req.file.path);
+      } catch (cleanupError) {
+        console.error('Error cleaning up temporary file:', cleanupError);
+      }
+    }
+
+    res.status(500).json({ success: false, error: error.message || 'Failed to add paper with PDF' });
+  }
+});
+
 app.get('/api/papers/search', async (req, res) => {
   try {
     const { q } = req.query;

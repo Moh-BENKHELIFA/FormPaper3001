@@ -75,12 +75,15 @@ class PaperOperations {
   static async getPaper(id) {
     const sql = `
       SELECT p.*,
-             GROUP_CONCAT(c.name) as category_names,
+             GROUP_CONCAT(DISTINCT c.name) as category_names,
+             GROUP_CONCAT(DISTINCT t.name) as tag_names,
              d.texte as description_text,
              d.images as description_images
       FROM papers p
       LEFT JOIN paper_categories pc ON p.id = pc.paper_id
       LEFT JOIN categories c ON pc.category_id = c.id
+      LEFT JOIN paper_tags pt ON p.id = pt.paper_id
+      LEFT JOIN tags t ON pt.tag_id = t.id
       LEFT JOIN descriptions d ON p.id = d.paper_id
       WHERE p.id = ?
       GROUP BY p.id
@@ -92,6 +95,9 @@ class PaperOperations {
     const paper = new Paper(row);
     if (row.category_names) {
       paper.categories = row.category_names.split(',').map(name => ({ name: name.trim() }));
+    }
+    if (row.tag_names) {
+      paper.tags = row.tag_names.split(',').map(name => name.trim());
     }
     if (row.description_text || row.description_images) {
       paper.description = {
@@ -189,6 +195,31 @@ class PaperOperations {
     } catch (folderError) {
       console.error('❌ Erreur lors de la création du dossier:', folderError);
       // L'article est créé même si le dossier échoue
+    }
+
+    // Ajouter les tags si fournis
+    if (paperData.tags && Array.isArray(paperData.tags) && paperData.tags.length > 0) {
+      try {
+        for (const tagName of paperData.tags) {
+          if (tagName && tagName.trim()) {
+            // Vérifier si le tag existe déjà
+            let tag = await db.get('SELECT id FROM tags WHERE name = ?', [tagName.trim()]);
+
+            if (!tag) {
+              // Créer le tag s'il n'existe pas
+              const tagResult = await db.run('INSERT INTO tags (name) VALUES (?)', [tagName.trim()]);
+              tag = { id: tagResult.id };
+            }
+
+            // Lier le tag au papier
+            await db.run('INSERT OR IGNORE INTO paper_tags (paper_id, tag_id) VALUES (?, ?)', [paperId, tag.id]);
+          }
+        }
+        console.log(`✅ Tags ajoutés: ${paperData.tags.join(', ')}`);
+      } catch (tagError) {
+        console.error('❌ Erreur lors de l\'ajout des tags:', tagError);
+        // Ne pas faire échouer la création si les tags échouent
+      }
     }
 
     return this.getPaper(paperId);
