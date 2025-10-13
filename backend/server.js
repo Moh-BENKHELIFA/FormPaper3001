@@ -84,9 +84,19 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024,
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
+    console.log('📄 File upload check:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      fieldname: file.fieldname
+    });
+
+    // Accepter les fichiers PDF par mimetype OU par extension
+    if (file.mimetype === 'application/pdf' ||
+        file.mimetype === 'application/octet-stream' && file.originalname.endsWith('.pdf') ||
+        file.originalname.endsWith('.pdf')) {
       cb(null, true);
     } else {
+      console.error('❌ File rejected:', file.mimetype, file.originalname);
       cb(new Error('Only PDF files are allowed'));
     }
   }
