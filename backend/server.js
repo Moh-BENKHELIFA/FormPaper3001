@@ -334,17 +334,30 @@ app.post('/api/papers/quick-add', async (req, res) => {
 // Quick add with PDF from browser extension
 app.post('/api/papers/quick-add-with-pdf', upload.single('pdf'), async (req, res) => {
   try {
-    const { doi, tags, reading_status, is_favorite } = req.body;
+    let { doi, tags, reading_status, is_favorite } = req.body;
     const pdfFile = req.file;
 
     console.log('📚 Quick-add with PDF from extension:', { doi, tags, reading_status, is_favorite, hasPdf: !!pdfFile });
 
-    if (!doi) {
-      return res.status(400).json({ success: false, error: 'DOI is required' });
-    }
-
     if (!pdfFile) {
       return res.status(400).json({ success: false, error: 'PDF file is required' });
+    }
+
+    // Si le DOI n'est pas fourni ou invalide, l'extraire du PDF
+    if (!doi || !doi.match(/^10\.\d{4,9}\/[-._;()\/:a-zA-Z0-9]+$/)) {
+      console.log('🔍 DOI invalide ou absent, extraction depuis le PDF...');
+      try {
+        const extractedData = await extractDOIFromPDF(pdfFile.path);
+        if (extractedData && extractedData.doi) {
+          doi = extractedData.doi;
+          console.log('✅ DOI extrait du PDF:', doi);
+        } else {
+          return res.status(400).json({ success: false, error: 'Impossible d\'extraire le DOI du PDF. Veuillez l\'ajouter manuellement depuis FormPaper.' });
+        }
+      } catch (extractError) {
+        console.error('❌ Erreur lors de l\'extraction du DOI:', extractError);
+        return res.status(400).json({ success: false, error: 'Impossible d\'extraire le DOI du PDF. Veuillez l\'ajouter manuellement depuis FormPaper.' });
+      }
     }
 
     // Vérifier si existe déjà
@@ -412,30 +425,47 @@ app.post('/api/papers/quick-add-with-pdf', upload.single('pdf'), async (req, res
         const images = await extractImagesFromPDF(finalPdfPath);
 
         if (images && images.images && images.images.length > 0) {
-          // Prendre la première image comme cover
-          const firstImagePath = images.images[0];
-          const firstImageFullPath = path.join(__dirname, firstImagePath);
+          // Chercher la première image non-blanche
+          let coverImageSaved = false;
 
-          if (await fs.pathExists(firstImageFullPath)) {
-            // Copier comme cover image
-            const coverImageName = `paper_Cover_${paperId}.png`;
-            const coverImagePath = path.join(paperFolderPath, coverImageName);
+          for (const imagePath of images.images) {
+            const imageFullPath = path.join(__dirname, imagePath);
 
-            await fs.copyFile(firstImageFullPath, coverImagePath);
-            console.log(`✅ Cover image sauvegardée: ${coverImageName}`);
+            if (await fs.pathExists(imageFullPath)) {
+              // Vérifier si l'image est blanche/uniforme
+              const isBlank = await checkIfBlankImage(imageFullPath);
 
-            // Mettre à jour le chemin de l'image dans la base de données
-            const coverImageDbPath = `MyPapers/${folderPath}/${coverImageName}`;
-            await database.updatePaper(paperId, {
-              ...newPaper,
-              image: coverImageDbPath
-            });
+              if (!isBlank) {
+                // Copier comme cover image
+                const coverImageName = `paper_Cover_${paperId}.png`;
+                const coverImagePath = path.join(paperFolderPath, coverImageName);
 
-            // Nettoyer les images temporaires
-            const extractedImagesDir = path.join(__dirname, 'uploads', 'extracted_images');
-            await fs.remove(extractedImagesDir);
-            console.log('✅ Images temporaires nettoyées');
+                await fs.copyFile(imageFullPath, coverImagePath);
+                console.log(`✅ Cover image sauvegardée: ${coverImageName}`);
+
+                // Mettre à jour le chemin de l'image dans la base de données
+                const coverImageDbPath = `MyPapers/${folderPath}/${coverImageName}`;
+                await database.updatePaper(paperId, {
+                  ...newPaper,
+                  image: coverImageDbPath
+                });
+
+                coverImageSaved = true;
+                break; // Arrêter dès qu'on a trouvé une bonne image
+              } else {
+                console.log(`⚠️ Image ignorée (blanche/uniforme): ${imagePath}`);
+              }
+            }
           }
+
+          if (!coverImageSaved) {
+            console.log('⚠️ Aucune image valide trouvée (toutes blanches/uniformes)');
+          }
+
+          // Nettoyer les images temporaires
+          const extractedImagesDir = path.join(__dirname, 'uploads', 'extracted_images');
+          await fs.remove(extractedImagesDir);
+          console.log('✅ Images temporaires nettoyées');
         } else {
           console.log('⚠️ Aucune image trouvée dans le PDF');
         }
@@ -1182,6 +1212,31 @@ async function extractDOIFromPDF(filePath) {
         console.error('Python script error:', error);
         resolve(null);
       }
+    });
+  });
+}
+
+// Vérifier si une image est blanche/uniforme
+async function checkIfBlankImage(imagePath) {
+  return new Promise((resolve) => {
+    const pythonScript = path.join(__dirname, 'scripts', 'check_blank_image.py');
+    const python = spawn('python', [pythonScript, imagePath]);
+
+    let output = '';
+
+    python.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    python.on('close', (code) => {
+      // Code 0 = image blanche, Code 1 = image OK
+      resolve(code === 0);
+    });
+
+    python.on('error', (error) => {
+      console.error('Error checking blank image:', error);
+      // En cas d'erreur, considérer l'image comme valide
+      resolve(false);
     });
   });
 }
