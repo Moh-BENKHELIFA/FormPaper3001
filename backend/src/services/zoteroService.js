@@ -290,13 +290,86 @@ class ZoteroService {
   }
 
   /**
-   * Créer un item dans Zotero
+   * Récupérer ou créer la collection "FormPaper"
+   */
+  async getOrCreateFormPaperCollection() {
+    try {
+      const config = await this.getConfig();
+      if (!config || !config.api_key_full) {
+        throw new Error('Configuration Zotero non trouvée');
+      }
+
+      // Récupérer toutes les collections
+      const response = await axios.get(
+        `${ZOTERO_API_BASE}/users/${config.user_id}/collections`,
+        {
+          headers: {
+            'Zotero-API-Key': config.api_key_full,
+          },
+        }
+      );
+
+      // Chercher la collection "FormPaper"
+      const formPaperCollection = response.data.find(
+        (col) => col.data.name === 'FormPaper'
+      );
+
+      if (formPaperCollection) {
+        console.log('✅ Collection FormPaper trouvée:', formPaperCollection.key);
+        return formPaperCollection.key;
+      }
+
+      // Créer la collection si elle n'existe pas
+      console.log('📁 Création de la collection FormPaper...');
+      const createResponse = await axios.post(
+        `${ZOTERO_API_BASE}/users/${config.user_id}/collections`,
+        [
+          {
+            name: 'FormPaper',
+            parentCollection: false,
+          },
+        ],
+        {
+          headers: {
+            'Zotero-API-Key': config.api_key_full,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      console.log('🔍 Collection creation response:', JSON.stringify(createResponse.data, null, 2));
+
+      const createdKeys = createResponse.data.successful;
+      if (createdKeys && Object.keys(createdKeys).length > 0) {
+        const firstIndex = Object.keys(createdKeys)[0];
+        const collectionKey = createdKeys[firstIndex].key;
+        console.log('✅ Collection FormPaper créée avec clé:', collectionKey);
+        return collectionKey;
+      }
+
+      throw new Error('Impossible de créer la collection FormPaper');
+    } catch (error) {
+      console.error('Error getting/creating FormPaper collection:', error.response?.data || error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Créer un item dans Zotero et l'ajouter à la collection FormPaper
    */
   async createItem(itemData) {
     try {
       const config = await this.getConfig();
       if (!config || !config.api_key_full) {
         throw new Error('Configuration Zotero non trouvée');
+      }
+
+      // Récupérer ou créer la collection FormPaper
+      const collectionKey = await this.getOrCreateFormPaperCollection();
+
+      // Ajouter l'item à la collection si elle existe
+      if (collectionKey) {
+        itemData.collections = [collectionKey];
       }
 
       const response = await axios.post(
@@ -314,6 +387,7 @@ class ZoteroService {
       const createdKeys = response.data.successful;
       if (createdKeys && Object.keys(createdKeys).length > 0) {
         const firstKey = Object.keys(createdKeys)[0];
+        console.log('✅ Item ajouté à Zotero et à la collection FormPaper');
         return {
           success: true,
           key: createdKeys[firstKey].key,
