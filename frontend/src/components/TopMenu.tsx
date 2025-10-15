@@ -7,9 +7,11 @@ import PaperFiltersComponent from './PaperFilters';
 interface TopMenuProps {
   papers: Paper[];
   onFilterChange: (filteredPapers: Paper[]) => void;
+  viewSize: 'small' | 'medium' | 'large';
+  onViewSizeChange: (size: 'small' | 'medium' | 'large') => void;
 }
 
-const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
+const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange, viewSize, onViewSizeChange }) => {
   const { viewMode, setViewMode } = useNavigation();
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -154,24 +156,71 @@ const TopMenu: React.FC<TopMenuProps> = ({ papers, onFilterChange }) => {
             </button>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400 mr-2">Vue:</span>
-            {viewModes.map(({ mode, icon: Icon, label }) => (
+          <div className="flex items-center space-x-4">
+            {/* View mode buttons */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-500 dark:text-gray-400 mr-2">Vue:</span>
+              {viewModes.map(({ mode, icon: Icon, label }) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`
+                    p-2 rounded-lg transition-colors
+                    ${viewMode === mode
+                      ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200'
+                    }
+                  `}
+                  title={label}
+                >
+                  <Icon className="w-5 h-5" />
+                </button>
+              ))}
+            </div>
+
+            {/* View size buttons */}
+            <div className="flex items-center space-x-1 border-l border-gray-300 dark:border-gray-600 pl-4">
+              <span className="text-sm text-gray-500 dark:text-gray-400 mr-2">Taille:</span>
               <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
+                onClick={() => onViewSizeChange('small')}
                 className={`
-                  p-2 rounded-lg transition-colors
-                  ${viewMode === mode
+                  px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                  ${viewSize === 'small'
                     ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
                     : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200'
                   }
                 `}
-                title={label}
+                title="Petite taille"
               >
-                <Icon className="w-5 h-5" />
+                S
               </button>
-            ))}
+              <button
+                onClick={() => onViewSizeChange('medium')}
+                className={`
+                  px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                  ${viewSize === 'medium'
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200'
+                  }
+                `}
+                title="Taille moyenne"
+              >
+                M
+              </button>
+              <button
+                onClick={() => onViewSizeChange('large')}
+                className={`
+                  px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                  ${viewSize === 'large'
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200'
+                  }
+                `}
+                title="Grande taille"
+              >
+                L
+              </button>
+            </div>
           </div>
         </div>
 

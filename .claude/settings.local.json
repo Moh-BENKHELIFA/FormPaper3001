@@ -34,7 +34,9 @@
       "Bash(TASKKILL /F /PID 52980)",
       "Bash(npx kill-port:*)",
       "Bash(timeout:*)",
-      "Bash(del backendformpaper.db)"
+      "Bash(del backendformpaper.db)",
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

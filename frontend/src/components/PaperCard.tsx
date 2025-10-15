@@ -456,7 +456,10 @@ const PaperCard: React.FC<PaperCardProps> = ({ paper, onStatusChange, onPaperUpd
       {/* Contenu de la carte */}
       <div className="flex flex-col flex-grow p-4 space-y-3">
         {/* Titre */}
-        <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100 line-clamp-2 flex-grow">
+        <h3
+          className="font-semibold text-lg text-gray-900 dark:text-gray-100 line-clamp-2 flex-grow"
+          title={localPaper.title}
+        >
           {localPaper.title}
         </h3>
 

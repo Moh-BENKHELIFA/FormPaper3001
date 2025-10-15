@@ -23,11 +23,33 @@ const HomePage: React.FC = () => {
   const [displayedPapers, setDisplayedPapers] = useState<Paper[]>([]);
   const [activeStatFilter, setActiveStatFilter] = useState<string | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<number | null>(null);
+  const [viewSize, setViewSize] = useState<'small' | 'medium' | 'large'>('medium');
 
   useEffect(() => {
     loadPapers();
     loadStats();
-  }, []);
+
+    // Polling pour détecter les nouveaux papers ajoutés via l'extension
+    const pollInterval = setInterval(async () => {
+      try {
+        const papersData = await paperService.getAllPapers();
+        // Si le nombre de papers a changé, rafraîchir
+        if (papersData.length !== papers.length) {
+          setPapers(papersData);
+          if (selectedCollectionId === null) {
+            setCollectionPapers(papersData);
+            setDisplayedPapers(papersData);
+          }
+          loadStats();
+        }
+      } catch (err) {
+        // Ignorer les erreurs de polling silencieusement
+      }
+    }, 5000); // Vérifier toutes les 5 secondes
+
+    // Nettoyer l'intervalle au démontage du composant
+    return () => clearInterval(pollInterval);
+  }, [papers.length, selectedCollectionId]);
 
   useEffect(() => {
     // Charger les papers de la collection sélectionnée
@@ -178,6 +200,8 @@ const HomePage: React.FC = () => {
         <TopMenu
           papers={papers}
           onFilterChange={handleFilterChange}
+          viewSize={viewSize}
+          onViewSizeChange={setViewSize}
         />
 
         <MainContent
@@ -187,6 +211,7 @@ const HomePage: React.FC = () => {
           onPaperUpdate={handlePaperUpdate}
           onStatsUpdate={loadStats}
           selectedCollectionId={selectedCollectionId}
+          viewSize={viewSize}
         />
       </div>
     </div>

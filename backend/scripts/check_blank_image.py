@@ -5,7 +5,7 @@ import sys
 from PIL import Image
 import numpy as np
 
-def is_blank_image(image_path, threshold=0.95, min_width=400, min_height=300):
+def is_blank_image(image_path, threshold=0.95, min_width=500, min_height=400):
     """
     Vérifie si une image est blanche/uniforme ou trop petite (logo)
     threshold: pourcentage de pixels similaires pour considérer l'image comme blanche (0.95 = 95%)
@@ -19,6 +19,12 @@ def is_blank_image(image_path, threshold=0.95, min_width=400, min_height=300):
         width, height = img.size
         if width < min_width or height < min_height:
             print(f"SMALL_LOGO:{width}x{height}")
+            return True
+
+        # Filtrer les images carrées ou presque (logos ACM/IEEE sont souvent carrés)
+        aspect_ratio = max(width, height) / min(width, height)
+        if aspect_ratio < 1.3:  # Si presque carré (ratio < 1.3)
+            print(f"SQUARE_LOGO:{width}x{height}:ratio={aspect_ratio:.2f}")
             return True
 
         # Convertir en niveaux de gris pour simplifier
