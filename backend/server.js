@@ -13,6 +13,7 @@ const imageUploadRoutes = require('./routes/imageUpload');
 const notesStorageRoutes = require('./routes/notesStorage');
 const aiRoutes = require('./routes/aiRoutes');
 const zoteroRoutes = require('./routes/zotero');
+const zoteroService = require('./src/services/zoteroService');
 const pdfFinderService = require('./src/services/pdfFinderService');
 
 const app = express();
@@ -490,6 +491,31 @@ app.post('/api/papers/quick-add-with-pdf', upload.single('pdf'), async (req, res
 
     // Récupérer le papier mis à jour avec l'image
     const updatedPaper = await database.getPaper(paperId);
+
+    // Ajouter à Zotero automatiquement
+    try {
+      console.log('📚 Ajout item à Zotero:', { doi: metadata.doi, title: metadata.title });
+      const zoteroItem = {
+        itemType: 'journalArticle',
+        title: metadata.title,
+        creators: metadata.authors ? metadata.authors.split(',').map(a => ({
+          creatorType: 'author',
+          name: a.trim()
+        })) : [],
+        date: metadata.year ? metadata.year.toString() : '',
+        publicationTitle: metadata.journal || '',
+        DOI: metadata.doi || '',
+        url: metadata.url || '',
+      };
+
+      const zoteroResult = await zoteroService.createItem(zoteroItem);
+      if (zoteroResult.success) {
+        console.log('✅ Item ajouté à Zotero:', zoteroResult.key);
+      }
+    } catch (zoteroError) {
+      console.error('❌ Erreur Zotero (non bloquant):', zoteroError.message);
+      // Ne pas faire échouer l'ajout du paper si Zotero échoue
+    }
 
     res.json({
       success: true,

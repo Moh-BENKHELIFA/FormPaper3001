@@ -299,11 +299,11 @@ const MainContent: React.FC<MainContentProps> = ({
   const getGridClasses = () => {
     switch (viewSize) {
       case 'small':
-        return 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6';
+        return 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3';
       case 'medium':
-        return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6';
+        return 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4';
       case 'large':
-        return 'grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6';
+        return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6';
       default:
         return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6';
     }
@@ -438,11 +438,11 @@ const MainContent: React.FC<MainContentProps> = ({
   const getImagesGridClasses = () => {
     switch (viewSize) {
       case 'small':
-        return 'grid grid-cols-3 md:grid-cols-6 lg:grid-cols-10 xl:grid-cols-12 gap-4';
+        return 'grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 xl:grid-cols-16 gap-2';
       case 'medium':
-        return 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4';
+        return 'grid grid-cols-3 md:grid-cols-6 lg:grid-cols-10 xl:grid-cols-12 gap-3';
       case 'large':
-        return 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4';
+        return 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4';
       default:
         return 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4';
     }
