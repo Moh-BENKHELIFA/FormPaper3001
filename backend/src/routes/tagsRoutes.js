@@ -5,7 +5,14 @@ const { db } = require('../database');
 // Récupérer tous les tags
 router.get('/', async (req, res) => {
   try {
-    const tags = await db.all('SELECT * FROM tags ORDER BY name ASC');
+    const tags = await db.all(`
+      SELECT t.*, COUNT(DISTINCT p.id) as paper_count
+      FROM tags t
+      LEFT JOIN paper_tags pt ON t.id = pt.tag_id
+      LEFT JOIN papers p ON pt.paper_id = p.id
+      GROUP BY t.id
+      ORDER BY t.name ASC
+    `);
     res.json({ success: true, data: tags });
   } catch (error) {
     console.error('Error fetching tags:', error);

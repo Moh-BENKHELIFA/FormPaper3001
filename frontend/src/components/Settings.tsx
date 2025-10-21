@@ -727,7 +727,9 @@ const Settings: React.FC = () => {
                         style={{ backgroundColor: tag.color }}
                       ></div>
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{tag.name}</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-500">#{tag.id}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-500">
+                        {(tag as any).paper_count || 0} article{((tag as any).paper_count || 0) !== 1 ? 's' : ''}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <button

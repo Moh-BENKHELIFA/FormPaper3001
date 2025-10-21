@@ -283,6 +283,9 @@ class PaperOperations {
       throw new Error('Paper not found');
     }
 
+    // Supprimer les associations avec les tags
+    await db.run('DELETE FROM paper_tags WHERE paper_id = ?', [id]);
+
     // Supprimer de la base de données
     const sql = 'DELETE FROM papers WHERE id = ?';
     const result = await db.run(sql, [id]);
