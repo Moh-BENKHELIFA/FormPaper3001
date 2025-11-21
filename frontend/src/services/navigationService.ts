@@ -131,6 +131,16 @@ class NavigationService {
     this.updateURL();
   }
 
+  goToExportPpt(): void {
+    this.state = {
+      ...this.state,
+      currentPage: 'export-ppt',
+      selectedPaperId: null,
+    };
+    this.notify();
+    this.updateURL();
+  }
+
   private updateURL(): void {
     const { currentPage, selectedPaperId, selectedCollectionId } = this.state;
     let path = '/';
@@ -163,6 +173,9 @@ class NavigationService {
         if (selectedCollectionId) {
           path = `/collections/${selectedCollectionId}`;
         }
+        break;
+      case 'export-ppt':
+        path = '/export-ppt';
         break;
       case 'home':
       default:
@@ -235,6 +248,12 @@ class NavigationService {
           selectedCollectionId: collectionId,
         };
       }
+    } else if (path === '/export-ppt') {
+      this.state = {
+        ...this.state,
+        currentPage: 'export-ppt',
+        selectedPaperId: null,
+      };
     } else {
       this.state = {
         ...this.state,

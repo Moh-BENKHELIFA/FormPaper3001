@@ -26,6 +26,7 @@ export const useNavigation = (): NavigationState & NavigationActions => {
     goToSettings: navigationService.goToSettings.bind(navigationService),
     goToCreateCollection: navigationService.goToCreateCollection.bind(navigationService),
     goToCollection: navigationService.goToCollection.bind(navigationService),
+    goToExportPpt: navigationService.goToExportPpt.bind(navigationService),
   };
 
   return {

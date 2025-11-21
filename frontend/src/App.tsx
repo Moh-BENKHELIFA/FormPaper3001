@@ -9,6 +9,7 @@ import ManagePaper from './components/ManagePaper';
 import Settings from './components/Settings';
 import CreateCollectionPage from './components/CreateCollectionPage';
 import CollectionPage from './components/CollectionPage';
+import ExportPpt from './components/ExportPpt';
 
 const App: React.FC = () => {
   const { currentPage, selectedPaperId } = useNavigation();
@@ -27,6 +28,8 @@ const App: React.FC = () => {
         return <CreateCollectionPage />;
       case 'collection':
         return <CollectionPage />;
+      case 'export-ppt':
+        return <ExportPpt />;
       case 'home':
       default:
         return <HomePage />;

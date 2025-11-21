@@ -1,6 +1,6 @@
 export type ViewMode = 'grid' | 'list' | 'table' | 'images';
 
-export type PageType = 'home' | 'notes' | 'add-paper' | 'manage-paper' | 'settings' | 'create-collection' | 'collection';
+export type PageType = 'home' | 'notes' | 'add-paper' | 'manage-paper' | 'settings' | 'create-collection' | 'collection' | 'export-ppt';
 
 export interface NavigationState {
   currentPage: PageType;
@@ -23,6 +23,7 @@ export interface NavigationActions {
   goToSettings: () => void;
   goToCreateCollection: () => void;
   goToCollection: (collectionId: number) => void;
+  goToExportPpt: () => void;
 }
 
 export interface BreadcrumbItem {

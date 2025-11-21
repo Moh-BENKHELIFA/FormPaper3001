@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Export PowerPoint - FormPaper3001</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
+  <style>
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #d1d5db;
+      border-radius: 3px;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #4b5563;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen">
+  <div id="app">
+    <!-- Loading state -->
+    <div id="loading" class="flex items-center justify-center h-screen">
+      <div class="text-center">
+        <svg class="animate-spin h-8 w-8 mx-auto text-blue-600" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-4 text-gray-600 dark:text-gray-400">Chargement des articles...</p>
+      </div>
+    </div>
+
+    <!-- Main content (hidden initially) -->
+    <div id="main-content" class="hidden">
+      <!-- Header -->
+      <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 sticky top-0 z-10">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              Export PowerPoint
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Sélectionnez les articles à exporter
+            </p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <span id="selected-count" class="text-sm text-gray-600 dark:text-gray-400">
+              0 article(s) sélectionné(s)
+            </span>
+            <button
+              id="export-btn"
+              disabled
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <span>Exporter en PowerPoint</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex items-center space-x-4">
+          <div class="flex-1">
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Rechercher par titre, auteur ou conférence..."
+              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+          </div>
+          <select
+            id="tag-filter"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          >
+            <option value="">Tous les tags</option>
+          </select>
+          <button
+            id="select-all-btn"
+            class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+          >
+            Tout sélectionner
+          </button>
+        </div>
+      </div>
+
+      <!-- Papers list -->
+      <div id="papers-list" class="p-6 pb-24 custom-scrollbar" style="max-height: calc(100vh - 220px); overflow-y: auto;">
+        <!-- Papers will be inserted here -->
+      </div>
+
+      <!-- Footer -->
+      <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            <span id="displayed-count" class="font-medium">0</span> article(s) affiché(s)
+            <span id="selection-info" class="ml-4 hidden">
+              <span id="selection-count" class="font-medium text-blue-600">0</span> sélectionné(s)
+            </span>
+          </div>
+          <div class="text-sm text-gray-500 dark:text-gray-400">
+            Chaque article = 1 slide PowerPoint
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+  </div>
+
+  <script>
+    // State
+    let papers = [];
+    let tags = [];
+    let selectedPaperIds = new Set();
+    let searchQuery = '';
+    let filterTag = '';
+
+    // DOM elements
+    const loadingEl = document.getElementById('loading');
+    const mainContentEl = document.getElementById('main-content');
+    const papersListEl = document.getElementById('papers-list');
+    const searchInputEl = document.getElementById('search-input');
+    const tagFilterEl = document.getElementById('tag-filter');
+    const selectAllBtnEl = document.getElementById('select-all-btn');
+    const exportBtnEl = document.getElementById('export-btn');
+    const selectedCountEl = document.getElementById('selected-count');
+    const displayedCountEl = document.getElementById('displayed-count');
+    const selectionInfoEl = document.getElementById('selection-info');
+    const selectionCountEl = document.getElementById('selection-count');
+    const toastContainerEl = document.getElementById('toast-container');
+
+    // Check dark mode
+    if (localStorage.getItem('theme') === 'dark' ||
+        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+
+    // Toast function
+    function showToast(title, message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `p-4 rounded-lg shadow-lg ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white max-w-sm`;
+      toast.innerHTML = `
+        <div class="font-medium">${title}</div>
+        <div class="text-sm opacity-90">${message}</div>
+      `;
+      toastContainerEl.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    // Get first author
+    function getFirstAuthor(authors) {
+      const firstAuthor = authors.split(',')[0]?.trim() || 'Unknown';
+      return authors.includes(',') ? `${firstAuthor} et al.` : firstAuthor;
+    }
+
+    // Filter papers
+    function getFilteredPapers() {
+      return papers.filter(paper => {
+        const matchesSearch = searchQuery === '' ||
+          paper.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          paper.authors.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (paper.conference && paper.conference.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        const matchesTag = filterTag === '' ||
+          (paper.tags && paper.tags.some(tag => tag.id === parseInt(filterTag)));
+
+        return matchesSearch && matchesTag;
+      });
+    }
+
+    // Render papers
+    function renderPapers() {
+      const filtered = getFilteredPapers();
+      displayedCountEl.textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        papersListEl.innerHTML = `
+          <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+            <p>Aucun article trouvé</p>
+          </div>
+        `;
+        return;
+      }
+
+      papersListEl.innerHTML = filtered.map(paper => `
+        <div
+          data-paper-id="${paper.id}"
+          class="paper-item p-4 rounded-lg border cursor-pointer transition-all mb-3 ${
+            selectedPaperIds.has(paper.id)
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+          }"
+        >
+          <div class="flex items-start space-x-4">
+            <div class="flex-shrink-0 pt-1">
+              <div class="w-5 h-5 rounded border-2 flex items-center justify-center ${
+                selectedPaperIds.has(paper.id)
+                  ? 'border-blue-500 bg-blue-500'
+                  : 'border-gray-300 dark:border-gray-600'
+              }">
+                ${selectedPaperIds.has(paper.id) ? `
+                  <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  </svg>
+                ` : ''}
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                ${paper.title}
+              </h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                ${getFirstAuthor(paper.authors)} - ${paper.conference_short || paper.conference || 'N/A'}
+              </p>
+              ${paper.tags && paper.tags.length > 0 ? `
+                <div class="flex flex-wrap gap-1 mt-2">
+                  ${paper.tags.map(tag => `
+                    <span
+                      class="px-2 py-0.5 text-xs rounded-full text-white"
+                      style="background-color: ${tag.color || '#6B7280'}"
+                    >
+                      ${tag.name}
+                    </span>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+            ${paper.doi ? `
+              <div class="flex-shrink-0">
+                <span class="text-xs text-gray-400 dark:text-gray-500">
+                  DOI: ${paper.doi.length > 30 ? paper.doi.substring(0, 30) + '...' : paper.doi}
+                </span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+
+      // Add click handlers
+      document.querySelectorAll('.paper-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const paperId = parseInt(el.dataset.paperId);
+          togglePaper(paperId);
+        });
+      });
+    }
+
+    // Toggle paper selection
+    function togglePaper(paperId) {
+      if (selectedPaperIds.has(paperId)) {
+        selectedPaperIds.delete(paperId);
+      } else {
+        selectedPaperIds.add(paperId);
+      }
+      updateSelectionUI();
+      renderPapers();
+    }
+
+    // Update selection UI
+    function updateSelectionUI() {
+      const count = selectedPaperIds.size;
+      selectedCountEl.textContent = `${count} article(s) sélectionné(s)`;
+      selectionCountEl.textContent = count;
+
+      if (count > 0) {
+        selectionInfoEl.classList.remove('hidden');
+        exportBtnEl.disabled = false;
+      } else {
+        selectionInfoEl.classList.add('hidden');
+        exportBtnEl.disabled = true;
+      }
+
+      const filtered = getFilteredPapers();
+      selectAllBtnEl.textContent = selectedPaperIds.size === filtered.length && filtered.length > 0
+        ? 'Tout désélectionner'
+        : 'Tout sélectionner';
+    }
+
+    // Select all
+    function selectAll() {
+      const filtered = getFilteredPapers();
+      if (selectedPaperIds.size === filtered.length) {
+        selectedPaperIds.clear();
+      } else {
+        filtered.forEach(p => selectedPaperIds.add(p.id));
+      }
+      updateSelectionUI();
+      renderPapers();
+    }
+
+    // Export to PowerPoint
+    async function exportToPpt() {
+      if (selectedPaperIds.size === 0) {
+        showToast('Erreur', 'Veuillez sélectionner au moins un article', 'error');
+        return;
+      }
+
+      exportBtnEl.disabled = true;
+      exportBtnEl.innerHTML = `
+        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Export en cours...</span>
+      `;
+
+      try {
+        const response = await fetch('http://localhost:5004/api/export-ppt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paperIds: Array.from(selectedPaperIds) })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          const { filename, content } = data.data;
+
+          // Convert base64 to blob
+          const byteCharacters = atob(content);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+
+          // Download
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+
+          showToast('Export réussi', `${data.data.paperCount} article(s) exporté(s) en PowerPoint`, 'success');
+        } else {
+          throw new Error(data.error);
+        }
+      } catch (err) {
+        showToast('Erreur', err.message || 'Impossible d\'exporter en PowerPoint', 'error');
+        console.error('Error exporting:', err);
+      } finally {
+        exportBtnEl.disabled = selectedPaperIds.size === 0;
+        exportBtnEl.innerHTML = '<span>Exporter en PowerPoint</span>';
+      }
+    }
+
+    // Load data
+    async function loadData() {
+      try {
+        const [papersRes, tagsRes] = await Promise.all([
+          fetch('http://localhost:5004/api/papers'),
+          fetch('http://localhost:5004/api/tags')
+        ]);
+
+        const papersData = await papersRes.json();
+        const tagsData = await tagsRes.json();
+
+        papers = papersData.data || [];
+        tags = tagsData.data || [];
+
+        // Populate tag filter
+        tagFilterEl.innerHTML = '<option value="">Tous les tags</option>' +
+          tags.map(tag => `<option value="${tag.id}">${tag.name}</option>`).join('');
+
+        loadingEl.classList.add('hidden');
+        mainContentEl.classList.remove('hidden');
+        renderPapers();
+      } catch (err) {
+        console.error('Error loading data:', err);
+        showToast('Erreur', 'Impossible de charger les articles', 'error');
+      }
+    }
+
+    // Event listeners
+    searchInputEl.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      renderPapers();
+      updateSelectionUI();
+    });
+
+    tagFilterEl.addEventListener('change', (e) => {
+      filterTag = e.target.value;
+      renderPapers();
+      updateSelectionUI();
+    });
+
+    selectAllBtnEl.addEventListener('click', selectAll);
+    exportBtnEl.addEventListener('click', exportToPpt);
+
+    // Initialize
+    loadData();
+  </script>
+</body>
+</html>

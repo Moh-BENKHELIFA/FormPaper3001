@@ -10,7 +10,7 @@ import Sidebar from './Sidebar';
 import Modal from './Modal';
 
 const Settings: React.FC = () => {
-  const { goToHome, goToCreateCollection } = useNavigation();
+  const { goToHome, goToCreateCollection, goToExportPpt } = useNavigation();
   const { success, error } = useToast();
   const { theme, setTheme } = useTheme();
   const [activeSection, setActiveSection] = useState<'general' | 'tags' | 'collections' | 'integrations' | 'ai'>('general');
@@ -596,8 +596,36 @@ const Settings: React.FC = () => {
     { id: 'integrations', label: 'Intégrations', icon: '🔗' },
   ];
 
+  const handleOpenExportPpt = () => {
+    goToExportPpt();
+  };
+
   const renderGeneralSettings = () => (
     <div className="space-y-6">
+      {/* Export Section */}
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Export</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
+                <span className="text-xl">📊</span>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Export PowerPoint</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-500">Exporter vos articles en présentation PowerPoint</p>
+              </div>
+            </div>
+            <button
+              onClick={handleOpenExportPpt}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Ouvrir l'export
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div>
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Apparence</h3>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
